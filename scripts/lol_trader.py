@@ -764,15 +764,21 @@ class LoLTrader:
                     log.warning("%s Error: %s — retrying 10s", tag, e)
                     await asyncio.sleep(10)
                 finally:
-                    if ws and not ws.closed:
-                        await ws.close()
+                    if ws:
+                        try:
+                            await ws.close()
+                        except Exception:
+                            pass
                         ws = None
         except asyncio.CancelledError:
             match.llf_status = "cancelled"
             log.info("%s Cancelled — closing WS", tag)
         finally:
-            if ws and not ws.closed:
-                await ws.close()
+            if ws:
+                try:
+                    await ws.close()
+                except Exception:
+                    pass
                 log.info("%s WS closed", tag)
 
     # ── Game state diffing ──────────────────────────────────────────────
@@ -1061,19 +1067,21 @@ class LoLTrader:
             ev_record["clob_order_id"] = order_id
 
             fill = None
-            for attempt in range(4):
+            poll_delays = [0.5, 1.0, 1.5, 2.0, 2.5, 2.5, 3.0, 3.0, 3.0]
+            for attempt, delay in enumerate(poll_delays):
                 if attempt:
-                    await asyncio.sleep(0.8)
+                    await asyncio.sleep(delay)
                 fill = await asyncio.get_event_loop().run_in_executor(
                     self._executor,
                     lambda oid=order_id, ts=placed_ts: poly_client.verify_buy_fill(oid, ts),
                 )
                 if fill:
+                    log.info("[ENTRY] Fill found on poll attempt %d for order %s", attempt + 1, order_id[:20])
                     break
 
             if not fill:
-                log.warning("[ENTRY] No fill in trades stream for order %s", order_id[:20])
-                story.append("3) Polled get_trades: no row with taker_order_id = this order (after retries).")
+                log.warning("[ENTRY] No fill after %d polls (~19s) for order %s", len(poll_delays), order_id[:20])
+                story.append(f"3) Polled get_trades {len(poll_delays)}x (~19s): no row with taker_order_id = this order.")
                 story.append("4) **Did not open a position** — fill not confirmed (may still appear on Polymarket UI later; refresh Activity).")
                 ev_record["trade_exec"] = "no_fill_confirmed"
                 ev_record["exec_story"] = "\n".join(story)

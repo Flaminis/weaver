@@ -245,9 +245,12 @@ class PolyClient:
         try:
             params = TradeParams(after=placed_ts - 10)
             trades = self.clob.get_trades(params)
+            n = len(trades) if trades else 0
             for t in trades:
                 if t.get("taker_order_id") == order_id:
+                    log.info("verify_buy_fill: MATCH in %d trades (status=%s)", n, t.get("status"))
                     return t
+            log.debug("verify_buy_fill: %d trades, no match for %s", n, order_id[:16] if order_id else "?")
             return None
         except Exception as e:
             log.warning("verify_buy_fill(%s) failed: %s", order_id[:16] if order_id else "?", e)
