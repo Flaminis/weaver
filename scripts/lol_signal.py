@@ -100,6 +100,7 @@ def _tier_impact_and_size(
     is_soul: bool,
     teamfight_kills: int,
     had_obj_followup: bool,
+    late_game: bool = False,
 ) -> Tuple[float, float, str]:
     """
     Return (expected_impact prior, size multiplier vs base, reason suffix).
@@ -116,17 +117,19 @@ def _tier_impact_and_size(
             return 0.065, 1.25, "DRAKE_SOUL"
         return 0.038, 1.0, "DRAKE"
     if etype == EventType.KILL:
-        # Kill path only reached after stack / teamfight gating
         if teamfight_kills >= cfg.TEAMFIGHT_KILL_THRESHOLD:
             mult = 1.15
             tier = f"TF{teamfight_kills}k"
         elif had_obj_followup:
             mult = 1.05
             tier = "POST_OBJ"
+        elif late_game:
+            mult = 1.0
+            tier = "LATE_KILL"
         else:
             mult = 1.0
             tier = f"STK{teamfight_kills}"
-        return 0.05, mult, tier  # stacked kills: barely clears MIN_EDGE + typical 1–2c sprd
+        return 0.05, mult, tier
     return 0.0, 0.0, "NONE"
 
 
@@ -200,8 +203,11 @@ class SignalModel:
         )
 
         # ── Kill gating (v2): no trade on first blood / isolated trades ──
+        # Late-game exception: when price is >75¢ or <25¢ the outcome is
+        # heavily skewed — every kill is confirmation, not noise.
+        late_game = mid_a > 0.75 or mid_a < 0.25
         if event.etype == EventType.KILL:
-            if teamfight_kills < cfg.MIN_STACKED_KILLS:
+            if teamfight_kills < cfg.MIN_STACKED_KILLS and not late_game:
                 if not post_obj:
                     return None, f"KILL_THIN_stack={teamfight_kills}"
             # If market already ran on a kill print, skip — kills are the noisiest leg
@@ -221,7 +227,7 @@ class SignalModel:
                     return None, f"PRICED_ADD_SKIP_{event.etype.value}"
 
         impact, size_mult, tier = _tier_impact_and_size(
-            event.etype, is_soul, teamfight_kills, post_obj
+            event.etype, is_soul, teamfight_kills, post_obj, late_game
         )
         if impact <= 0:
             return None, "NO_IMPACT_TIER"
