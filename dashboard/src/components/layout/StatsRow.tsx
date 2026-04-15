@@ -18,8 +18,6 @@ export function StatsRow({ data }: { data?: TraderState }) {
     ['Mkts', `${withMarket}/${matchCount}`],
     ['Evts', String(eventCount)],
     ['Exp', fmtUsd(data.exposure)],
-    ['Strk', data.consecutive_losses > 0 ? `-${data.consecutive_losses}` : '0',
-      data.consecutive_losses >= 3 ? 'text-red-400' : undefined],
   ]
 
   return (

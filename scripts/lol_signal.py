@@ -1,12 +1,10 @@
 """
-LoL Signal Model v2 — tiered objectives, kill-stack gates, edge vs spread.
+LoL Signal Model v2 — tiered objectives, kill-stack sizing, edge vs spread.
 
-Design goals (differs from v1):
-- Do NOT fire on isolated +1 kills (main source of -spread churn).
-- Only trade kills when the same team has stacked kills in a short window (skirmish).
+Design goals:
+- Trade ALL kills. Size by kill stack: 1=$10, 2=$40, 3+=$100.
 - Objectives (baron / inhib / drake) use conservative prior "impact" estimates.
 - Enforce cfg.MIN_EDGE: expected_impact must exceed spread + MIN_EDGE (else skip).
-- Size scales with event severity; still capped by cfg.MAX_SINGLE_BET.
 - Priced-in: stricter on noise (kills); objectives get a wider skip threshold.
 
 Tower / status events are never traded.
@@ -117,18 +115,15 @@ def _tier_impact_and_size(
             return 0.065, 1.25, "DRAKE_SOUL"
         return 0.038, 1.0, "DRAKE"
     if etype == EventType.KILL:
-        if teamfight_kills >= cfg.TEAMFIGHT_KILL_THRESHOLD:
-            mult = 1.15
+        if teamfight_kills >= 3:
+            mult = cfg.KILL_SIZE_3PLUS / cfg.BET_SIZE_BASE
             tier = f"TF{teamfight_kills}k"
-        elif had_obj_followup:
-            mult = 1.05
-            tier = "POST_OBJ"
-        elif late_game:
-            mult = 1.0
-            tier = "LATE_KILL"
+        elif teamfight_kills == 2:
+            mult = cfg.KILL_SIZE_2 / cfg.BET_SIZE_BASE
+            tier = f"STK2"
         else:
-            mult = 1.0
-            tier = f"STK{teamfight_kills}"
+            mult = cfg.KILL_SIZE_1 / cfg.BET_SIZE_BASE
+            tier = "KILL1"
         return 0.05, mult, tier
     return 0.0, 0.0, "NONE"
 
@@ -202,15 +197,8 @@ class SignalModel:
             within_sec=cfg.POST_OBJECTIVE_KILL_WINDOW_SEC,
         )
 
-        # ── Kill gating (v2): no trade on first blood / isolated trades ──
-        # Late-game exception: when price is >75¢ or <25¢ the outcome is
-        # heavily skewed — every kill is confirmation, not noise.
         late_game = mid_a > 0.75 or mid_a < 0.25
         if event.etype == EventType.KILL:
-            if teamfight_kills < cfg.MIN_STACKED_KILLS and not late_game:
-                if not post_obj:
-                    return None, f"KILL_THIN_stack={teamfight_kills}"
-            # If market already ran on a kill print, skip — kills are the noisiest leg
             if already_priced_lo:
                 if not (holding_direction == direction):
                     return None, f"PRICED_IN_KILL_mv={directional_move:.3f}"

@@ -3,13 +3,6 @@ import { Separator } from '@/components/ui/separator'
 import type { TraderState } from '@/lib/types'
 import { fmtUsd, fmtPnl, fmtPct, fmtTime } from '@/lib/format'
 
-function fmtCountdown(sec: number): string {
-  if (sec <= 0) return ''
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
-}
-
 export function Header({ data }: { data?: TraderState }) {
   return (
     <header className="flex items-center justify-between px-4 py-2.5 border-b border-border">
@@ -23,15 +16,6 @@ export function Header({ data }: { data?: TraderState }) {
             <Badge variant={data.dry_run ? 'secondary' : 'destructive'} className="text-[9px] h-4 px-1.5">
               {data.dry_run ? 'DRY RUN' : 'LIVE'}
             </Badge>
-            {data.circuit_active && (
-              <Badge
-                variant="destructive"
-                className="text-[9px] h-4 px-1.5 animate-pulse"
-                title={data.circuit_reason || 'Circuit breaker active'}
-              >
-                CIRCUIT BREAKER{data.circuit_seconds_left > 0 ? ` · ${fmtCountdown(data.circuit_seconds_left)}` : ''}
-              </Badge>
-            )}
             <Separator orientation="vertical" className="h-4" />
             <span className="text-[10px] text-muted-foreground">{fmtTime(data.uptime_sec)}</span>
             {data.poly_ws && (
@@ -61,9 +45,6 @@ export function Header({ data }: { data?: TraderState }) {
           <Kpi label="Exposure" value={fmtUsd(data.exposure)} />
           <Kpi label="Trades" value={String(data.total_trades)} />
           <Kpi label="WR" value={fmtPct(data.win_rate)} color={data.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'} />
-          {data.consecutive_losses > 0 && (
-            <Kpi label="Losses" value={String(data.consecutive_losses)} color="text-red-400" />
-          )}
         </div>
       )}
     </header>

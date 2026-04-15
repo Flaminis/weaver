@@ -1,5 +1,5 @@
 """
-Risk layer: circuit breaker, position tracking, PnL, exposure limits, cooldowns.
+Risk layer: position tracking, PnL, exposure limits, cooldowns.
 """
 from __future__ import annotations
 
@@ -58,39 +58,8 @@ class RiskManager:
         self.trades: list[TradeRecord] = []
         self._token_cooldowns: dict[str, float] = {}
         self._match_cooldowns: dict[int, float] = {}
-        self._consecutive_losses: int = 0
-        self._circuit_breaker_until: float = 0.0
         self._session_start = time.time()
         self._daily_pnl: float = 0.0
-
-    # ── Circuit breaker ─────────────────────────────────────────────────
-
-    @property
-    def circuit_active(self) -> bool:
-        if self._circuit_breaker_until > time.time():
-            return True
-        if self._daily_pnl < -cfg.DAILY_LOSS_LIMIT:
-            return True
-        return False
-
-    @property
-    def circuit_seconds_left(self) -> float:
-        """Seconds until time-based breaker expires. 0 if not active or daily-loss triggered."""
-        remaining = self._circuit_breaker_until - time.time()
-        return max(0.0, remaining)
-
-    @property
-    def circuit_reason(self) -> str:
-        if self._circuit_breaker_until > time.time():
-            return f"{self._consecutive_losses} consecutive losses"
-        if self._daily_pnl < -cfg.DAILY_LOSS_LIMIT:
-            return f"daily loss ${self._daily_pnl:.2f} exceeds -${cfg.DAILY_LOSS_LIMIT:.0f} limit"
-        return ""
-
-    def _trigger_circuit_breaker(self, reason: str):
-        self._circuit_breaker_until = time.time() + cfg.CIRCUIT_BREAKER_MINUTES * 60
-        log.warning("CIRCUIT BREAKER triggered: %s — paused for %d min",
-                     reason, cfg.CIRCUIT_BREAKER_MINUTES)
 
     # ── Exposure ────────────────────────────────────────────────────────
 
@@ -118,9 +87,6 @@ class RiskManager:
 
     def check_entry(self, token_id: str, match_id: int, size_usd: float) -> tuple[bool, str]:
         now = time.time()
-
-        if self.circuit_active:
-            return False, "CIRCUIT_BREAKER"
 
         cd = self._token_cooldowns.get(token_id, 0)
         if now < cd:
@@ -173,14 +139,6 @@ class RiskManager:
         )
         self.trades.append(rec)
 
-        if pos.exit_pnl < 0:
-            self._consecutive_losses += 1
-            if self._consecutive_losses >= cfg.MAX_CONSECUTIVE_LOSSES:
-                self._trigger_circuit_breaker(
-                    f"{self._consecutive_losses} consecutive losses")
-        else:
-            self._consecutive_losses = 0
-
         emoji = "+" if pos.exit_pnl >= 0 else ""
         log.info("POSITION CLOSED: %s %s entry=%.3f exit=%.3f pnl=%s$%.2f hold=%.0fs",
                  pos.direction, pos.match_name, pos.entry_price, exit_price,
@@ -214,14 +172,6 @@ class RiskManager:
             reason=f"RESOLVED_{resolved_price:.0f}",
         )
         self.trades.append(rec)
-
-        if pos.exit_pnl < 0:
-            self._consecutive_losses += 1
-            if self._consecutive_losses >= cfg.MAX_CONSECUTIVE_LOSSES:
-                self._trigger_circuit_breaker(
-                    f"{self._consecutive_losses} consecutive losses")
-        else:
-            self._consecutive_losses = 0
 
         emoji = "+" if pos.exit_pnl >= 0 else ""
         log.info("POSITION RESOLVED: %s %s entry=%.3f resolved=%.2f pnl=%s$%.2f held=%.0fs",

@@ -41,8 +41,6 @@ def dump(url: str = "http://38.180.152.197:8430") -> str:
     lines.append(f"  daily_pnl:     ${d.get('daily_pnl', 0):.2f}")
     lines.append(f"  exposure:      ${d.get('exposure', 0):.2f}")
     lines.append(f"  trades:        {d.get('total_trades', 0)} (wr={d.get('win_rate', 0)*100:.0f}%)")
-    lines.append(f"  circuit:       {d.get('circuit_active', False)}")
-    lines.append(f"  consec_losses: {d.get('consecutive_losses', 0)}")
     lines.append("")
 
     # ── Matches ─────────────────────────────────────────────────────

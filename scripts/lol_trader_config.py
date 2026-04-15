@@ -24,20 +24,17 @@ NEAR_RESOLVED_CEIL = 0.97       # Skip markets priced above 97c
 
 # ── Sizing ──────────────────────────────────────────────────────────────
 
-BET_SIZE_BASE = 10.0            # $10 base per trade (prod)
-MAX_SINGLE_BET = 20.0           # $20 max single trade
-MAX_TOTAL_EXPOSURE = 100.0      # $100 max across all open positions
+BET_SIZE_BASE = 10.0            # $10 base per trade (objectives)
+KILL_SIZE_1 = 10.0              # $10 on a single kill
+KILL_SIZE_2 = 40.0              # $40 on 2 stacked kills
+KILL_SIZE_3PLUS = 100.0         # $100 on 3+ stacked kills
+MAX_SINGLE_BET = 100.0          # $100 max single trade
+MAX_TOTAL_EXPOSURE = 300.0      # $300 max across all open positions
 
 # ── Cooldowns ───────────────────────────────────────────────────────────
 
 TOKEN_COOLDOWN_SEC = 30         # Don't re-enter same token for 30s
 MATCH_COOLDOWN_SEC = 5          # Min 5s between trades on same match
-
-# ── Circuit breaker ─────────────────────────────────────────────────────
-
-MAX_CONSECUTIVE_LOSSES = 5      # 5 losses in a row → pause
-CIRCUIT_BREAKER_MINUTES = 30    # Pause for 30 min
-DAILY_LOSS_LIMIT = 50.0         # Stop trading if daily loss exceeds $50
 
 # ── PandaScore ──────────────────────────────────────────────────────────
 
@@ -55,10 +52,9 @@ LLF_RECV_TIMEOUT = 300
 # ── Combo detection (signal v2) ─────────────────────────────────────────
 
 COMBO_WINDOW_SEC = 30           # Events within 30s are part of same combo
-TEAMFIGHT_KILL_THRESHOLD = 3    # Label “teamfight” + larger size when >= this in window
+TEAMFIGHT_KILL_THRESHOLD = 3    # Label "teamfight" when >= this in window
 TEAMFIGHT_WINDOW_SEC = 15       # Kill burst window (stacked kills for same team)
-MIN_STACKED_KILLS = 2           # v2: do not trade KILL unless >= this many kills in window (or post-obj)
-POST_OBJECTIVE_KILL_WINDOW_SEC = 45.0  # KILL right after baron/inhib/drake counts as “follow-up”
+POST_OBJECTIVE_KILL_WINDOW_SEC = 45.0  # KILL right after baron/inhib/drake counts as "follow-up"
 
 # ── Logging ─────────────────────────────────────────────────────────────
 

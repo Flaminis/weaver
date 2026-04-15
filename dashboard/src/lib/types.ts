@@ -177,6 +177,7 @@ export interface TraderState {
   circuit_seconds_left: number
   circuit_reason: string
   consecutive_losses: number
+  // kept for API compat — always false/0/"" now that circuit breaker is removed
   poly_ws: PolyWsHealth
   matches: Record<string, MatchData>
   positions: PositionData[]
