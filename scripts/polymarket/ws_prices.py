@@ -5,12 +5,20 @@ Adapted from Oracle-Dota's ws_price_stream.py.
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 import websockets
+
+try:
+    import orjson
+    def _loads(s): return orjson.loads(s)
+    def _dumps(d): return orjson.dumps(d)
+except ImportError:
+    import json
+    def _loads(s): return json.loads(s)
+    def _dumps(d): return json.dumps(d)
 
 from polymarket.logger import get_logger
 
@@ -19,6 +27,8 @@ log = get_logger("poly.ws")
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 RECONNECT_DELAY = 2.0
 MAX_RECONNECT_DELAY = 30.0
+STALE_DATA_TIMEOUT = 60  # Force reconnect if no message for 60s
+WATCHDOG_INTERVAL = 15   # Check every 15s
 
 
 @dataclass
@@ -114,9 +124,11 @@ class MarketWebSocket:
         self._ws = None
         self._running = False
         self._task: Optional[asyncio.Task] = None
+        self._watchdog_task: Optional[asyncio.Task] = None
         self._on_price_update = on_price_update
         self._reconnect_delay = RECONNECT_DELAY
         self._pending_subs: list[str] = []
+        self._last_msg_at: float = 0
 
     def get_book(self, token_id: str) -> Optional[BookState]:
         return self._subscribed.get(token_id)
@@ -135,6 +147,7 @@ class MarketWebSocket:
     async def start(self):
         self._running = True
         self._task = asyncio.create_task(self._run_loop())
+        self._watchdog_task = asyncio.create_task(self._watchdog())
 
     async def stop(self):
         self._running = False
@@ -142,13 +155,28 @@ class MarketWebSocket:
             await self._ws.close()
         if self._task:
             self._task.cancel()
+        if self._watchdog_task:
+            self._watchdog_task.cancel()
+
+    async def _watchdog(self):
+        """Force reconnect if no WS message received for STALE_DATA_TIMEOUT seconds."""
+        while self._running:
+            await asyncio.sleep(WATCHDOG_INTERVAL)
+            if self._last_msg_at > 0 and self._ws:
+                age = time.time() - self._last_msg_at
+                if age > STALE_DATA_TIMEOUT:
+                    log.warning("WS watchdog: no message for %.0fs — forcing reconnect", age)
+                    try:
+                        await self._ws.close()
+                    except Exception:
+                        pass
 
     async def _send_subscribe(self, token_ids: list[str]):
         if not self._ws or not token_ids:
             return
         msg = {"assets_ids": token_ids, "type": "market", "custom_feature_enabled": True}
         try:
-            await self._ws.send(json.dumps(msg))
+            await self._ws.send(_dumps(msg))
             log.info("WS subscribed to %d tokens", len(token_ids))
         except Exception as e:
             log.warning("WS subscribe failed: %s", e)
@@ -158,6 +186,7 @@ class MarketWebSocket:
             try:
                 async with websockets.connect(
                     WS_URL, ping_interval=20, ping_timeout=10, close_timeout=5,
+                    max_size=2**22, max_queue=512,
                 ) as ws:
                     self._ws = ws
                     self._reconnect_delay = RECONNECT_DELAY
@@ -171,13 +200,14 @@ class MarketWebSocket:
                     async for raw in ws:
                         if not self._running:
                             break
+                        self._last_msg_at = time.time()
                         try:
-                            parsed = json.loads(raw)
+                            parsed = _loads(raw)
                             msgs = parsed if isinstance(parsed, list) else [parsed]
                             for msg in msgs:
                                 if isinstance(msg, dict):
                                     self._handle_message(msg)
-                        except json.JSONDecodeError:
+                        except Exception:
                             continue
 
             except websockets.ConnectionClosed as e:

@@ -1,26 +1,22 @@
 """
-LoL Signal Model — event detection, combo tracking, direction + sizing.
+LoL Signal Model v2 — tiered objectives, kill-stack gates, edge vs spread.
 
-Rule-based v1 (no calibration data). Trades on:
-- Baron (always)
-- Inhibitor (always)
-- Drake (always — soul detection via count tracking)
-- Kill (always — but single kills are small; teamfights amplified)
+Design goals (differs from v1):
+- Do NOT fire on isolated +1 kills (main source of -spread churn).
+- Only trade kills when the same team has stacked kills in a short window (skirmish).
+- Objectives (baron / inhib / drake) use conservative prior "impact" estimates.
+- Enforce cfg.MIN_EDGE: expected_impact must exceed spread + MIN_EDGE (else skip).
+- Size scales with event severity; still capped by cfg.MAX_SINGLE_BET.
+- Priced-in: stricter on noise (kills); objectives get a wider skip threshold.
 
-Does NOT trade on:
-- Towers (noise, small impact, frequent)
-
-Combo detection: events within 30s amplify each other.
-Baron + towers + inhib in sequence = game-ending push signal.
-
-Priced-in gate: if market moved >5c in our direction in last 2s, skip
-UNLESS we already hold that direction and it's a consecutive event.
+Tower / status events are never traded.
 """
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Tuple
 
 import lol_trader_config as cfg
 
@@ -49,17 +45,16 @@ class LolEvent:
 
 @dataclass
 class Signal:
-    direction: str          # "buy_a" or "buy_b"  (a = first team listed)
+    direction: str          # "buy_a" or "buy_b"
     size_usd: float
-    confidence: float       # 0-1
-    expected_impact: float  # expected price move in our direction
+    confidence: float
+    expected_impact: float  # prior edge in price space (same units as mid)
     reason: str
     events: list[LolEvent]
 
 
 @dataclass
 class ComboWindow:
-    """Tracks recent events for combo amplification."""
     events: list[LolEvent] = field(default_factory=list)
 
     def add(self, ev: LolEvent):
@@ -67,11 +62,12 @@ class ComboWindow:
         cutoff = time.time() - cfg.COMBO_WINDOW_SEC
         self.events = [e for e in self.events if e.ts >= cutoff]
 
-    def recent_kills(self, team_id: int, window_sec: float = None) -> int:
+    def recent_kills(self, team_id: int, window_sec: float | None = None) -> int:
         w = window_sec or cfg.TEAMFIGHT_WINDOW_SEC
         cutoff = time.time() - w
         return sum(
-            e.delta for e in self.events
+            e.delta
+            for e in self.events
             if e.etype == EventType.KILL and e.team_id == team_id and e.ts >= cutoff
         )
 
@@ -79,31 +75,72 @@ class ComboWindow:
         cutoff = time.time() - cfg.COMBO_WINDOW_SEC
         return [e for e in self.events if e.team_id == team_id and e.ts >= cutoff]
 
-    def has_baron(self, team_id: int) -> bool:
-        cutoff = time.time() - cfg.COMBO_WINDOW_SEC
+    def had_objective_since(
+        self,
+        team_id: int,
+        types: tuple[EventType, ...],
+        within_sec: float,
+    ) -> bool:
+        cutoff = time.time() - within_sec
         return any(
-            e.etype == EventType.BARON and e.team_id == team_id and e.ts >= cutoff
+            e.etype in types and e.team_id == team_id and e.ts >= cutoff
             for e in self.events
         )
 
 
-TRADEABLE_EVENTS = {EventType.BARON, EventType.INHIBITOR, EventType.DRAKE, EventType.KILL}
+TRADEABLE = {EventType.BARON, EventType.INHIBITOR, EventType.DRAKE, EventType.KILL}
+
+
+def _direction_for_team(team_id: int, team_a_id: int) -> str:
+    return "buy_a" if team_id == team_a_id else "buy_b"
+
+
+def _tier_impact_and_size(
+    etype: EventType,
+    is_soul: bool,
+    teamfight_kills: int,
+    had_obj_followup: bool,
+) -> Tuple[float, float, str]:
+    """
+    Return (expected_impact prior, size multiplier vs base, reason suffix).
+
+    Impacts are deliberately conservative fractions of $1 — not calibrated ML,
+    but used only vs MIN_EDGE + spread so obviously weak prints (single kills) fail.
+    """
+    if etype == EventType.BARON:
+        return 0.09, 1.35, "BARON"
+    if etype == EventType.INHIBITOR:
+        return 0.055, 1.15, "INHIB"
+    if etype == EventType.DRAKE:
+        if is_soul:
+            return 0.065, 1.25, "DRAKE_SOUL"
+        return 0.038, 1.0, "DRAKE"
+    if etype == EventType.KILL:
+        # Kill path only reached after stack / teamfight gating
+        if teamfight_kills >= cfg.TEAMFIGHT_KILL_THRESHOLD:
+            mult = 1.15
+            tier = f"TF{teamfight_kills}k"
+        elif had_obj_followup:
+            mult = 1.05
+            tier = "POST_OBJ"
+        else:
+            mult = 1.0
+            tier = f"STK{teamfight_kills}"
+        return 0.05, mult, tier  # stacked kills: barely clears MIN_EDGE + typical 1–2c sprd
+    return 0.0, 0.0, "NONE"
 
 
 class SignalModel:
     """
-    Stateful signal model per match.
-    Tracks drake counts for soul detection, combos, and priced-in state.
+    Per-match state: rolling combo for kill counts; v2 gating.
     """
 
     def __init__(self, team_a_id: int, team_b_id: int):
         self.team_a_id = team_a_id
         self.team_b_id = team_b_id
         self.combo = ComboWindow()
-        self._prev_mid: float = 0.0
         self._drake_counts: dict[int, int] = {team_a_id: 0, team_b_id: 0}
         self._initialized = False
-        self._event_count = 0
 
     def _team_side(self, team_id: int) -> str:
         return "a" if team_id == self.team_a_id else "b"
@@ -118,135 +155,101 @@ class SignalModel:
         holding_direction: str | None = None,
         recent_move_2s: float = 0.0,
     ) -> tuple[Signal | None, str]:
-        """
-        Process a single LLF event and decide whether to trade.
-
-        Returns (Signal, skip_reason).
-        Signal is None if no trade; skip_reason explains why.
-        """
-
         if not self._initialized:
-            self._prev_mid = mid_a
             self._initialized = True
 
-        self._event_count += 1
         self.combo.add(event)
 
-        if self._event_count == 1:
-            self._prev_mid = mid_a
-            return None, "WARMUP_FIRST_EVENT"
-
         if event.etype == EventType.TOWER:
-            self._prev_mid = mid_a
             return None, "TOWER_SKIP"
-
         if event.etype == EventType.STATUS:
-            self._prev_mid = mid_a
             return None, "STATUS_SKIP"
-
-        if event.etype not in TRADEABLE_EVENTS:
-            self._prev_mid = mid_a
+        if event.etype not in TRADEABLE:
             return None, f"NOT_TRADEABLE_{event.etype.value}"
 
-        # ── Drake soul detection ────────────────────────────────────────
-        is_soul_drake = False
+        is_soul = False
         if event.etype == EventType.DRAKE:
             self._drake_counts[event.team_id] = event.new_value
-            if event.new_value >= 4:
-                is_soul_drake = True
+            is_soul = event.new_value >= 4
 
-        # ── Spread gate ─────────────────────────────────────────────────
+        # Liquidity / price hygiene (same as before, explicit)
         if spread > cfg.MAX_SPREAD:
-            self._prev_mid = mid_a
             return None, f"SPREAD_WIDE_{spread:.3f}"
 
-        # ── Direction ───────────────────────────────────────────────────
-        team_side = self._team_side(event.team_id)
-        direction = "buy_a" if team_side == "a" else "buy_b"
+        direction = _direction_for_team(event.team_id, self.team_a_id)
         buy_price = round(ask_a, 2) if direction == "buy_a" else round(1.0 - bid_a, 2)
-
-        # ── Price band gate ─────────────────────────────────────────────
         if buy_price < cfg.TRADE_MIN_PRICE or buy_price > cfg.TRADE_MAX_PRICE:
-            self._prev_mid = mid_a
             return None, f"PRICE_BAND_{buy_price:.3f}"
-
-        # ── Near resolved ───────────────────────────────────────────────
         if mid_a < cfg.NEAR_RESOLVED_FLOOR or mid_a > cfg.NEAR_RESOLVED_CEIL:
-            self._prev_mid = mid_a
             return None, f"NEAR_RESOLVED_{mid_a:.3f}"
 
-        # ── Combo tracking (for priced-in bypass logic) ──────────────────
-        combo_events = self.combo.recent_events(event.team_id)
-        combo_types = {e.etype for e in combo_events}
-        teamfight_kills = self.combo.recent_kills(event.team_id, cfg.TEAMFIGHT_WINDOW_SEC)
-
-        # ── Priced-in gate ──────────────────────────────────────────────
-        # Use actual 2-second market move from WebSocket price history.
-        # If market already moved >5c in our direction, skip
-        # UNLESS we already hold that direction AND either:
-        #   - consecutive kills (2+ in teamfight window)
-        #   - baron/inhib/soul drake (always worth adding to)
-        #   - multi-event combo (3+ event types in combo window)
+        # Priced-in directional move (positive = toward team A token)
         if direction == "buy_a":
             directional_move = recent_move_2s
         else:
             directional_move = -recent_move_2s
+        already_priced_lo = directional_move > cfg.PRICED_IN_THRESHOLD
+        already_priced_hi = directional_move > cfg.PRICED_IN_THRESHOLD * 1.6
 
-        already_priced = directional_move > cfg.PRICED_IN_THRESHOLD
+        teamfight_kills = self.combo.recent_kills(event.team_id, cfg.TEAMFIGHT_WINDOW_SEC)
+        combo_types = {e.etype for e in self.combo.recent_events(event.team_id)}
+        post_obj = self.combo.had_objective_since(
+            event.team_id,
+            (EventType.BARON, EventType.INHIBITOR, EventType.DRAKE),
+            within_sec=cfg.POST_OBJECTIVE_KILL_WINDOW_SEC,
+        )
 
-        if already_priced:
-            already_holding = (holding_direction == direction)
+        # ── Kill gating (v2): no trade on first blood / isolated trades ──
+        if event.etype == EventType.KILL:
+            if teamfight_kills < cfg.MIN_STACKED_KILLS:
+                if not post_obj:
+                    return None, f"KILL_THIN_stack={teamfight_kills}"
+            # If market already ran on a kill print, skip — kills are the noisiest leg
+            if already_priced_lo:
+                if not (holding_direction == direction):
+                    return None, f"PRICED_IN_KILL_mv={directional_move:.3f}"
+                # Allow adding while holding only on serious fight
+                if teamfight_kills < cfg.TEAMFIGHT_KILL_THRESHOLD:
+                    return None, f"PRICED_HOLD_NEED_TF_mv={directional_move:.3f}"
 
-            bypass = False
-            bypass_reason = ""
+        # Objectives: skip if the whole move already happened (wider bar for real objs)
+        if event.etype in (EventType.BARON, EventType.INHIBITOR, EventType.DRAKE):
+            if already_priced_hi:
+                if holding_direction != direction:
+                    return None, f"PRICED_OBJ_mv={directional_move:.3f}"
+                if event.etype != EventType.BARON:
+                    return None, f"PRICED_ADD_SKIP_{event.etype.value}"
 
-            if already_holding:
-                if event.etype == EventType.BARON:
-                    bypass = True
-                    bypass_reason = "BARON_WHILE_HOLDING"
-                elif event.etype == EventType.INHIBITOR:
-                    bypass = True
-                    bypass_reason = "INHIB_WHILE_HOLDING"
-                elif event.etype == EventType.DRAKE and is_soul_drake:
-                    bypass = True
-                    bypass_reason = "SOUL_WHILE_HOLDING"
-                elif event.etype == EventType.KILL and self.combo.recent_kills(event.team_id, cfg.TEAMFIGHT_WINDOW_SEC) >= 2:
-                    bypass = True
-                    bypass_reason = "CONSECUTIVE_KILLS_WHILE_HOLDING"
-                elif len({e.etype for e in self.combo.recent_events(event.team_id)}) >= 3:
-                    bypass = True
-                    bypass_reason = "MULTI_COMBO_WHILE_HOLDING"
+        impact, size_mult, tier = _tier_impact_and_size(
+            event.etype, is_soul, teamfight_kills, post_obj
+        )
+        if impact <= 0:
+            return None, "NO_IMPACT_TIER"
 
-            if not bypass:
-                self._prev_mid = mid_a
-                return None, f"PRICED_IN_{directional_move:.3f}_move2s={recent_move_2s:.3f}"
+        # Core edge check — this is what v1 never did with MIN_EDGE
+        edge_after_spread = impact - spread
+        if edge_after_spread < cfg.MIN_EDGE:
+            return None, f"LOW_EDGE_imp{impact:.3f}_spr{spread:.3f}_need{cfg.MIN_EDGE:.3f}"
 
-        self._prev_mid = mid_a
+        size_usd = min(cfg.BET_SIZE_BASE * size_mult, cfg.MAX_SINGLE_BET)
+        # Small bump when multiple event types in combo window (real scrap)
+        if len(combo_types) >= 3 and event.etype == EventType.KILL:
+            size_usd = min(size_usd * 1.08, cfg.MAX_SINGLE_BET)
 
-        # ── Sizing (flat $10 per event) ─────────────────────────────────
-        size_usd = cfg.BET_SIZE_BASE
-
-        # ── Build reason string ─────────────────────────────────────────
-        parts = [event.etype.value.upper()]
-        if is_soul_drake:
-            parts.append("SOUL")
-        if teamfight_kills >= cfg.TEAMFIGHT_KILL_THRESHOLD:
-            parts.append(f"TF{teamfight_kills}k")
-        if self.combo.has_baron(event.team_id):
-            parts.append("BARON_COMBO")
+        reason_parts = [tier]
+        if is_soul:
+            reason_parts.append("SOUL")
         if len(combo_types) >= 3:
-            parts.append(f"MULTI{len(combo_types)}")
-        reason = " ".join(parts)
+            reason_parts.append(f"MIX{len(combo_types)}")
+        reason = " ".join(reason_parts)
 
         signal = Signal(
             direction=direction,
-            size_usd=size_usd,
-            confidence=1.0,
-            expected_impact=0.0,
+            size_usd=round(size_usd, 2),
+            confidence=min(0.95, 0.55 + impact * 4),
+            expected_impact=round(impact, 4),
             reason=reason,
             events=[event],
         )
-
         return signal, "TRADE"
-
 

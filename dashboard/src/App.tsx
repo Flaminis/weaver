@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/Footer'
 import { MatchGrid } from '@/components/match/MatchCard'
 import { PositionsTable } from '@/components/positions/PositionsTable'
 import { EventsPanel } from '@/components/events/EventsPanel'
+import { TradesHistory } from '@/components/trades/TradesHistory'
 import { useTraderState } from '@/lib/api'
 
 const queryClient = new QueryClient()
@@ -45,7 +46,7 @@ function Dashboard() {
               <EventsPanel data={data} />
             </TabsContent>
             <TabsContent value="trades">
-              <PositionsTable data={data} />
+              <TradesHistory data={data} />
             </TabsContent>
           </Tabs>
         </div>

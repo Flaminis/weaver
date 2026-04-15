@@ -34,6 +34,7 @@ class Position:
     sell_time: float = 0.0
     exit_pnl: float = 0.0
     closed: bool = False
+    exit_story: list = field(default_factory=list)
 
 
 @dataclass
@@ -72,6 +73,20 @@ class RiskManager:
         if self._daily_pnl < -cfg.DAILY_LOSS_LIMIT:
             return True
         return False
+
+    @property
+    def circuit_seconds_left(self) -> float:
+        """Seconds until time-based breaker expires. 0 if not active or daily-loss triggered."""
+        remaining = self._circuit_breaker_until - time.time()
+        return max(0.0, remaining)
+
+    @property
+    def circuit_reason(self) -> str:
+        if self._circuit_breaker_until > time.time():
+            return f"{self._consecutive_losses} consecutive losses"
+        if self._daily_pnl < -cfg.DAILY_LOSS_LIMIT:
+            return f"daily loss ${self._daily_pnl:.2f} exceeds -${cfg.DAILY_LOSS_LIMIT:.0f} limit"
+        return ""
 
     def _trigger_circuit_breaker(self, reason: str):
         self._circuit_breaker_until = time.time() + cfg.CIRCUIT_BREAKER_MINUTES * 60

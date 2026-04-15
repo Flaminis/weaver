@@ -3,6 +3,13 @@ import { Separator } from '@/components/ui/separator'
 import type { TraderState } from '@/lib/types'
 import { fmtUsd, fmtPnl, fmtPct, fmtTime } from '@/lib/format'
 
+function fmtCountdown(sec: number): string {
+  if (sec <= 0) return ''
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+}
+
 export function Header({ data }: { data?: TraderState }) {
   return (
     <header className="flex items-center justify-between px-4 py-2.5 border-b border-border">
@@ -17,8 +24,12 @@ export function Header({ data }: { data?: TraderState }) {
               {data.dry_run ? 'DRY RUN' : 'LIVE'}
             </Badge>
             {data.circuit_active && (
-              <Badge variant="destructive" className="text-[9px] h-4 px-1.5 animate-pulse">
-                CIRCUIT BREAKER
+              <Badge
+                variant="destructive"
+                className="text-[9px] h-4 px-1.5 animate-pulse"
+                title={data.circuit_reason || 'Circuit breaker active'}
+              >
+                CIRCUIT BREAKER{data.circuit_seconds_left > 0 ? ` · ${fmtCountdown(data.circuit_seconds_left)}` : ''}
               </Badge>
             )}
             <Separator orientation="vertical" className="h-4" />

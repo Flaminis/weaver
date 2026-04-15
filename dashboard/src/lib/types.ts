@@ -29,8 +29,34 @@ export interface MatchData {
   league: string
   status: string
   event_count: number
+  total_markets: number
   match_events: EventData[]
   llf_connected: boolean
+  llf_status: string
+  llf_last_msg_age: number
+  llf_last_msg_type: string
+  llf_msg_count: number
+  /** Unix seconds when LLF last applied games[] (kills, objs, clock). Dashboard derives live age. */
+  llf_scoreboard_updated_at?: number
+  gamma: {
+    title: string
+    live: boolean
+    score: string
+    period: string
+    volume: number
+    liquidity: number
+    open_interest: number
+    start_time: string
+    end_date: string
+    description: string
+    resolution_source: string
+    competitive: number
+    league: string
+    league_tier: string
+    context: string
+    teams: { name: string; image?: string; slug?: string }[]
+    icon: string
+  }
 }
 
 export interface GameData {
@@ -72,6 +98,7 @@ export interface PositionData {
   closed: boolean
   exit_pnl: number
   sell_order_id: string
+  exit_story?: string | null
 }
 
 export interface TradeData {
@@ -97,6 +124,18 @@ export interface EventData {
   clock: string
   desc: string
   action: string
+  /** How the entry resolved after a TRADE signal: dry_run vs CLOB vs gated, etc. */
+  trade_exec?: string | null
+  gate_reason?: string | null
+  order_error?: string | null
+  /** Multi-line timeline: intent → order → fill/sell/reconcile; human-readable. */
+  exec_story?: string | null
+  clob_order_id?: string | null
+  fill_reported_shares?: number | null
+  /** Book reference px used for sizing (best ask for buy_a, etc.) */
+  attempt_ref_px?: number | null
+  /** FAK limit sent to CLOB (ref + 1¢ tick) */
+  attempt_limit_price?: number | null
   signal_dir: string | null
   signal_size: number | null
   signal_reason: string | null
@@ -128,6 +167,8 @@ export interface TraderState {
   win_rate: number
   exposure: number
   circuit_active: boolean
+  circuit_seconds_left: number
+  circuit_reason: string
   consecutive_losses: number
   matches: Record<string, MatchData>
   positions: PositionData[]

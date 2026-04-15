@@ -1,4 +1,3 @@
-import { Card, CardContent } from '@/components/ui/card'
 import type { TraderState } from '@/lib/types'
 import { fmtPnl, fmtUsd } from '@/lib/format'
 
@@ -13,27 +12,23 @@ export function StatsRow({ data }: { data?: TraderState }) {
   const losses = data.trades.filter(t => t.pnl < 0).length
 
   const stats: [string, string, string?][] = [
-    ['Session PnL', fmtPnl(data.daily_pnl), data.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'],
-    ['W / L', `${wins} / ${losses}`],
-    ['Open Pos', String(openPos)],
-    ['Matches', `${withMarket}/${matchCount}`],
-    ['Events', String(eventCount)],
-    ['Exposure', fmtUsd(data.exposure)],
-    ['Streak', data.consecutive_losses > 0 ? `-${data.consecutive_losses}` : '0',
+    ['PnL', fmtPnl(data.daily_pnl), data.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'],
+    ['W/L', `${wins}/${losses}`],
+    ['Pos', String(openPos)],
+    ['Mkts', `${withMarket}/${matchCount}`],
+    ['Evts', String(eventCount)],
+    ['Exp', fmtUsd(data.exposure)],
+    ['Strk', data.consecutive_losses > 0 ? `-${data.consecutive_losses}` : '0',
       data.consecutive_losses >= 3 ? 'text-red-400' : undefined],
   ]
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 my-2 px-4">
+    <div className="flex gap-1.5 px-4 py-1">
       {stats.map(([label, value, color]) => (
-        <Card key={label} className="rounded-lg">
-          <CardContent className="p-2 text-center">
-            <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{label}</div>
-            <div className={`text-sm font-mono font-semibold tabular-nums ${color || 'text-foreground'}`}>
-              {value}
-            </div>
-          </CardContent>
-        </Card>
+        <div key={label} className="flex items-center gap-1 bg-white/[0.02] rounded px-2 py-0.5 border border-white/[0.04]">
+          <span className="text-[7px] text-[#555] uppercase">{label}</span>
+          <span className={`text-[10px] font-mono font-bold tabular-nums ${color || 'text-foreground'}`}>{value}</span>
+        </div>
       ))}
     </div>
   )

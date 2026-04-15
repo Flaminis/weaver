@@ -10,11 +10,11 @@ Fallback exit: FAK sell after timeout
 
 TRADE_MIN_PRICE = 0.02          # Don't buy below 2c
 TRADE_MAX_PRICE = 0.85          # Don't buy above 85c
-MAX_SPREAD = 0.01               # Only trade at 1c spread
-MIN_EDGE = 0.03                 # Minimum expected edge (model_impact - spread)
+MAX_SPREAD = 0.02               # Max 2c spread
+MIN_EDGE = 0.02                 # v2: impact_prior - spread must exceed this
 MIN_BOOK_DEPTH = 30             # $ depth within 3c of best (buy side)
 PRICED_IN_WINDOW_SEC = 2.0      # Look-back window for priced-in check
-PRICED_IN_THRESHOLD = 0.05      # Skip if market moved >5c in our direction in last 2s
+PRICED_IN_THRESHOLD = 0.045     # v2: stricter on noisy legs (was 5c flat)
 NEAR_RESOLVED_FLOOR = 0.03      # Skip markets priced below 3c
 NEAR_RESOLVED_CEIL = 0.97       # Skip markets priced above 97c
 
@@ -55,13 +55,15 @@ ESPORTS_TAG_ID = 64
 
 LLF_RECONNECT_DELAY = 5
 LLF_NOT_OPEN_DELAY = 30
-LLF_RECV_TIMEOUT = 120
+LLF_RECV_TIMEOUT = 300
 
-# ── Combo detection ─────────────────────────────────────────────────────
+# ── Combo detection (signal v2) ─────────────────────────────────────────
 
 COMBO_WINDOW_SEC = 30           # Events within 30s are part of same combo
-TEAMFIGHT_KILL_THRESHOLD = 3    # 3+ kills in combo window = teamfight
-TEAMFIGHT_WINDOW_SEC = 15       # Kill burst window for teamfight detection
+TEAMFIGHT_KILL_THRESHOLD = 3    # Label “teamfight” + larger size when >= this in window
+TEAMFIGHT_WINDOW_SEC = 15       # Kill burst window (stacked kills for same team)
+MIN_STACKED_KILLS = 2           # v2: do not trade KILL unless >= this many kills in window (or post-obj)
+POST_OBJECTIVE_KILL_WINDOW_SEC = 45.0  # KILL right after baron/inhib/drake counts as “follow-up”
 
 # ── Logging ─────────────────────────────────────────────────────────────
 

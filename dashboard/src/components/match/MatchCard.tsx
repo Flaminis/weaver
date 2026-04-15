@@ -1,193 +1,213 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { MatchData, GameTeam, PositionData, EventData } from '@/lib/types'
 import { fmtCents, fmtGameClock } from '@/lib/format'
 import { createChart, AreaSeries, LineSeries, HistogramSeries, createSeriesMarkers, type IChartApi, type ISeriesApi, type ISeriesMarkersPluginApi, type Time } from 'lightweight-charts'
 
-// ── Mini Chart with event markers ───────────────────────────────────
-
-const TEAM_A_COLOR = '#58a6ff'
-const TEAM_B_COLOR = '#f97583'
-const TEAM_A_ARROW = '#58a6ff'
-const TEAM_B_ARROW = '#f97583'
-const EVT_EMOJI: Record<string, string> = {
-  kill: '⚔', drake: '🐉', baron: '👿', inhibitor: '💥', tower: '🏰',
+const DDRAGON = 'https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion'
+const CHAMP_FIXES: Record<string, string> = {
+  jarvaniv: 'JarvanIV', monkeyking: 'MonkeyKing', wukong: 'MonkeyKing',
+  renataglasc: 'Renata', bellaveth: 'Belveth', ksante: 'KSante',
+}
+function champUrl(slug: string) {
+  const f = CHAMP_FIXES[slug.toLowerCase()] || slug.charAt(0).toUpperCase() + slug.slice(1)
+  return `${DDRAGON}/${f}.png`
 }
 
-function MiniChart({ priceHistory, events, teamA, teamB, hoveredTs, sideA, sideB }: {
-  priceHistory: [number, number][]
-  events: EventData[]
-  teamA: string
-  teamB: string
-  hoveredTs?: number | null
-  sideA?: string
-  sideB?: string
+const EVT_EMOJI: Record<string, string> = { kill: '⚔', drake: '🐉', baron: '👿', inhibitor: '💥', tower: '🏰' }
+const ROLES = ['top', 'jun', 'mid', 'adc', 'sup']
+
+/** Row badge: BUY meant “model said trade”; only `polymarket_ok` is a real CLOB buy. */
+function eventActionBadge(ev: EventData): { label: string; className: string } {
+  if (ev.action === 'GATED') {
+    return { label: 'GATED', className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' }
+  }
+  if (ev.action === 'SKIP_SIZE') {
+    return { label: 'SIZE', className: 'bg-orange-500/12 text-orange-400/70 border-orange-500/25' }
+  }
+  if (ev.action === 'ORDER_FAIL') {
+    return { label: 'FAIL', className: 'bg-red-500/15 text-red-400 border-red-500/30' }
+  }
+  if (ev.action === 'TRADE') {
+    const x = ev.trade_exec
+    if (x === 'dry_run') return { label: 'SIM', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' }
+    if (x === 'polymarket_ok') return { label: 'BUY', className: 'bg-green-500/15 text-green-400 border-green-500/30' }
+    if (x === 'no_fill_confirmed') return { label: 'NO FILL', className: 'bg-slate-500/20 text-slate-300 border-slate-500/35' }
+    if (x === 'fill_rejected') return { label: 'BAD FILL', className: 'bg-red-500/12 text-red-300 border-red-500/30' }
+    if (x === 'no_order_id' || x === 'order_error') return { label: 'FAIL', className: 'bg-red-500/15 text-red-400 border-red-500/30' }
+    return { label: 'SIG', className: 'bg-white/[0.06] text-[#888] border-white/[0.08]' }
+  }
+  if (ev.action.startsWith('SPREAD')) {
+    return { label: ev.action.replace(/_/g, ' ').slice(0, 12), className: 'bg-yellow-500/10 text-yellow-400/70 border-yellow-500/20' }
+  }
+  if (ev.action.startsWith('PRICED')) {
+    return { label: ev.action.replace(/_/g, ' ').slice(0, 12), className: 'bg-purple-500/10 text-purple-400/70 border-purple-500/20' }
+  }
+  return { label: ev.action.replace(/_/g, ' ').slice(0, 12), className: 'bg-white/[0.03] text-[#555] border-white/[0.05]' }
+}
+
+/** CLOB FAK limit (stored) or book ref + 1¢ tick (matches trader). */
+function inferredBuyLimit(ev: EventData): number | null {
+  if (ev.attempt_limit_price != null && ev.attempt_limit_price > 0) return ev.attempt_limit_price
+  if (!ev.signal_dir) return null
+  if (ev.signal_dir === 'buy_a' && ev.buy_price_a > 0) return ev.buy_price_a + 0.01
+  if (ev.signal_dir === 'buy_b' && ev.buy_price_b > 0) return ev.buy_price_b + 0.01
+  return null
+}
+
+// ── Chart ───────────────────────────────────────────────────────────
+
+function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: {
+  priceHistory: [number, number][]; events: EventData[]
+  teamA: string; teamB: string; sideA?: string; sideB?: string; hoveredTs?: number | null
 }) {
-  const colorA = (sideA || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
-  const colorB = (sideB || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
-  const ref = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<IChartApi | null>(null)
-  const seriesRef = useRef<ISeriesApi<'Area'> | null>(null)
-  const seriesBRef = useRef<ISeriesApi<'Line'> | null>(null)
-  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
-  const evtBarRef = useRef<ISeriesApi<'Histogram'> | null>(null)
-  const teamARef = useRef(teamA)
-  const teamBRef = useRef(teamB)
-  teamARef.current = teamA
-  teamBRef.current = teamB
+  const el = useRef<HTMLDivElement>(null)
+  const chart = useRef<IChartApi | null>(null)
+  const sA = useRef<ISeriesApi<'Area'> | null>(null)
+  const sB = useRef<ISeriesApi<'Line'> | null>(null)
+  const sMkA = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  const sMkB = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  const sEv = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const tARef = useRef(teamA); tARef.current = teamA
+  const tBRef = useRef(teamB); tBRef.current = teamB
+
+  const cA = (sideA || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
+  const cB = (sideB || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
+  const cARef = useRef(cA); cARef.current = cA
+  const cBRef = useRef(cB); cBRef.current = cB
 
   useEffect(() => {
-    if (!ref.current || chartRef.current) return
-    const chart = createChart(ref.current, {
-      layout: { background: { color: 'transparent' }, textColor: 'hsl(0 0% 40%)', fontSize: 9 },
-      grid: { vertLines: { color: 'hsl(0 0% 10%)' }, horzLines: { color: 'hsl(0 0% 10%)' } },
+    if (sA.current) sA.current.applyOptions({ lineColor: cA, topColor: cA + '10', bottomColor: cA + '02' })
+    if (sB.current) sB.current.applyOptions({ color: cB + '70' })
+  }, [cA, cB])
+
+  useEffect(() => {
+    if (!el.current || chart.current) return
+    const c = createChart(el.current, {
+      layout: { background: { color: 'transparent' }, textColor: '#555', fontSize: 9 },
+      grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
       rightPriceScale: { borderColor: 'transparent', scaleMargins: { top: 0.08, bottom: 0.12 } },
       timeScale: { borderColor: 'transparent', timeVisible: true, secondsVisible: true },
       crosshair: {
-        vertLine: { color: 'hsl(0 0% 30%)', width: 1, style: 2, labelBackgroundColor: 'hsl(0 0% 15%)' },
-        horzLine: { color: 'hsl(0 0% 30%)', width: 1, style: 2, labelBackgroundColor: 'hsl(0 0% 15%)' },
+        vertLine: { color: '#333', width: 1, style: 2, labelBackgroundColor: '#222' },
+        horzLine: { color: '#333', width: 1, style: 2, labelBackgroundColor: '#222' },
       },
       handleScroll: true, handleScale: true,
       localization: { priceFormatter: (p: number) => (p * 100).toFixed(1) + '¢' },
     })
-    chartRef.current = chart
-
-    evtBarRef.current = chart.addSeries(HistogramSeries, {
-      priceScaleId: 'evt', priceFormat: { type: 'custom' as const, formatter: () => '' },
+    chart.current = c
+    sEv.current = c.addSeries(HistogramSeries, {
+      priceScaleId: 'ev', priceFormat: { type: 'custom', formatter: () => '' },
       lastValueVisible: false, priceLineVisible: false,
     })
-    chart.priceScale('evt').applyOptions({ scaleMargins: { top: 0.92, bottom: 0 }, visible: false })
-
-    seriesBRef.current = chart.addSeries(LineSeries, {
-      color: colorB + '80', lineWidth: 2, lineStyle: 0,
-      priceLineVisible: false, lastValueVisible: true,
+    c.priceScale('ev').applyOptions({ scaleMargins: { top: 0.92, bottom: 0 }, visible: false })
+    sB.current = c.addSeries(LineSeries, {
+      color: cB + '50', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: true,
       crosshairMarkerVisible: false,
-      priceFormat: { type: 'custom' as const, formatter: (p: number) => {
-        const n = teamBRef.current.split(' ')[0].slice(0, 5)
-        return `${n} ${(p * 100).toFixed(1)}¢`
-      }},
+      priceScaleId: 'teamB',
+      priceFormat: { type: 'custom', formatter: (p: number) => `${tBRef.current.split(' ')[0].slice(0,5)} ${(p*100).toFixed(1)}¢` },
     })
-
-    seriesRef.current = chart.addSeries(AreaSeries, {
-      lineColor: colorA, topColor: colorA + '10',
-      bottomColor: colorA + '02', lineWidth: 2,
-      priceFormat: { type: 'custom' as const, formatter: (p: number) => {
-        const n = teamARef.current.split(' ')[0].slice(0, 5)
-        return `${n} ${(p * 100).toFixed(1)}¢`
-      }},
+    c.priceScale('teamB').applyOptions({ visible: false })
+    sA.current = c.addSeries(AreaSeries, {
+      lineColor: cA, topColor: cA + '10', bottomColor: cA + '02', lineWidth: 2,
       lastValueVisible: true, priceLineVisible: false,
+      priceFormat: { type: 'custom', formatter: (p: number) => `${tARef.current.split(' ')[0].slice(0,5)} ${(p*100).toFixed(1)}¢` },
     })
-    markersRef.current = createSeriesMarkers(seriesRef.current, [])
-
-    const ro = new ResizeObserver(() => {
-      if (ref.current) chart.applyOptions({ width: ref.current.clientWidth, height: ref.current.clientHeight })
-    })
-    ro.observe(ref.current)
-    return () => { ro.disconnect(); chart.remove(); chartRef.current = null; seriesRef.current = null }
+    sMkA.current = createSeriesMarkers(sA.current, [])
+    sMkB.current = createSeriesMarkers(sB.current, [])
+    const ro = new ResizeObserver(() => { if (el.current) c.applyOptions({ width: el.current.clientWidth, height: el.current.clientHeight }) })
+    ro.observe(el.current)
+    return () => { ro.disconnect(); c.remove(); chart.current = null }
   }, [])
 
   useEffect(() => {
-    if (!seriesRef.current || !seriesBRef.current) return
-    if (priceHistory.length === 0 && events.length === 0) return
-
-    const allPoints = new Map<number, number>()
-
-    for (const [ts, mid] of priceHistory) {
-      allPoints.set(Math.floor(ts), mid)
-    }
-
-    for (const ev of events) {
-      const t = Math.floor(ev.ts)
-      if (!allPoints.has(t)) {
-        allPoints.set(t, ev.mid || 0.5)
-      }
-    }
-
-    const sorted = Array.from(allPoints.entries()).sort((a, b) => a[0] - b[0])
-
+    if (!sA.current || !sB.current) return
+    const pts = new Map<number, number>()
+    for (const [ts, mid] of priceHistory) pts.set(Math.floor(ts), mid)
+    for (const ev of events) { const t = Math.floor(ev.ts); if (!pts.has(t) && ev.mid > 0) pts.set(t, ev.mid) }
+    const sorted = Array.from(pts.entries()).sort((a, b) => a[0] - b[0])
     let last = 0
-    const dataA: { time: Time; value: number }[] = []
-    const dataB: { time: Time; value: number }[] = []
+    const dA: {time: Time; value: number}[] = [], dB: {time: Time; value: number}[] = []
     for (const [ts, mid] of sorted) {
       let t = ts; if (t <= last) t = last + 1; last = t
-      if (mid > 0) {
-        dataA.push({ time: t as Time, value: mid })
-        dataB.push({ time: t as Time, value: 1 - mid })
-      }
+      if (mid > 0) { dA.push({time: t as Time, value: mid}); dB.push({time: t as Time, value: 1 - mid}) }
     }
-    seriesRef.current.setData(dataA)
-    seriesBRef.current.setData(dataB)
+    sA.current.setData(dA); sB.current.setData(dB)
   }, [priceHistory, events])
 
   useEffect(() => {
-    if (!markersRef.current || !evtBarRef.current || events.length === 0) return
-
-    function isA(evTeam: string): boolean {
-      const t = evTeam.toLowerCase()
-      const a = teamA.toLowerCase()
-      const b = teamB.toLowerCase()
-      if (t === a || t.includes(a) || a.includes(t)) return true
-      if (t === b || t.includes(b) || b.includes(t)) return false
-      return t.split(' ')[0] === a.split(' ')[0]
+    if (!sMkA.current || !sMkB.current || !sEv.current) return
+    if (events.length === 0) {
+      sMkA.current.setMarkers([])
+      sMkB.current.setMarkers([])
+      sEv.current.setData([])
+      return
     }
-
-    const markers = events.filter(e => e.etype !== 'status').slice(-40).map(ev => {
-      const forA = isA(ev.team)
-      const emoji = EVT_EMOJI[ev.etype] || '•'
-      const shortTeam = ev.team.split(' ')[0]
-      return {
-        time: Math.floor(ev.ts) as Time,
-        position: forA ? 'belowBar' as const : 'aboveBar' as const,
-        color: forA ? colorA : colorB,
-        shape: forA ? 'arrowUp' as const : 'arrowDown' as const,
-        text: `${emoji} ${shortTeam}`,
-      }
+    // Align event times to chart candle keys (same rules as setData) so markers sit on the series.
+    const pts = new Map<number, number>()
+    for (const [ts, mid] of priceHistory) pts.set(Math.floor(ts), mid)
+    for (const ev of events) {
+      const t = Math.floor(ev.ts)
+      if (!pts.has(t) && ev.mid > 0) pts.set(t, ev.mid)
+    }
+    const sorted = Array.from(pts.entries()).sort((a, b) => a[0] - b[0])
+    let last = 0
+    const origToChart = new Map<number, number>()
+    for (const [ts] of sorted) {
+      let t = ts
+      if (t <= last) t = last + 1
+      last = t
+      origToChart.set(ts, t)
+    }
+    const aLo = teamA.toLowerCase()
+    const isA = (t: string) => {
+      const lo = t.toLowerCase()
+      return lo.includes(aLo) || aLo.includes(lo) || lo.split(' ')[0] === aLo.split(' ')[0]
+    }
+    const curCA = cARef.current, curCB = cBRef.current
+    const filtered = events.filter(e => e.etype !== 'status' && e.etype !== 'init').slice(-40)
+    const mkA: Parameters<ISeriesMarkersPluginApi<Time>['setMarkers']>[0] = []
+    const mkB: Parameters<ISeriesMarkersPluginApi<Time>['setMarkers']>[0] = []
+    for (const ev of filtered) {
+      const chartT = origToChart.get(Math.floor(ev.ts))
+      if (chartT === undefined) continue
+      const time = chartT as Time
+      const text = `${EVT_EMOJI[ev.etype] || '•'} ${ev.team.split(' ')[0]}`
+      const row = { time, position: 'belowBar' as const, shape: 'arrowUp' as const, text }
+      if (isA(ev.team)) mkA.push({ ...row, color: curCA })
+      else mkB.push({ ...row, color: curCB })
+    }
+    const sortT = (a: { time: Time }, b: { time: Time }) => (a.time as number) - (b.time as number)
+    sMkA.current.setMarkers(mkA.sort(sortT))
+    sMkB.current.setMarkers(mkB.sort(sortT))
+    const bars = filtered.map(ev => {
+      const chartT = origToChart.get(Math.floor(ev.ts))
+      const time = (chartT ?? Math.floor(ev.ts)) as Time
+      return { time, value: 1, color: isA(ev.team) ? curCA : curCB }
     })
-    markersRef.current.setMarkers(markers.sort((a, b) => (a.time as number) - (b.time as number)))
-
-    const bars = events.filter(e => e.etype !== 'status').slice(-40).map(ev => ({
-      time: Math.floor(ev.ts) as Time,
-      value: 1,
-      color: isA(ev.team) ? colorA : colorB,
-    }))
-    const deduped = new Map<number, typeof bars[0]>()
-    for (const d of bars) deduped.set(d.time as number, d)
-    evtBarRef.current.setData(Array.from(deduped.values()).sort((a, b) => (a.time as number) - (b.time as number)))
-  }, [events, teamA, teamB])
+    const ded = new Map<number, typeof bars[0]>()
+    for (const d of bars) ded.set(d.time as number, d)
+    sEv.current.setData(Array.from(ded.values()).sort((a, b) => (a.time as number) - (b.time as number)))
+  }, [events, teamA, priceHistory])
 
   useEffect(() => {
-    if (!chartRef.current || !hoveredTs) return
-    try {
-      chartRef.current.setCrosshairPosition(undefined as any, { time: Math.floor(hoveredTs) as Time } as any, seriesRef.current!)
-    } catch {}
-    return () => { try { chartRef.current?.clearCrosshairPosition() } catch {} }
+    if (!chart.current || !hoveredTs) return
+    try { chart.current.setCrosshairPosition(undefined as any, {time: Math.floor(hoveredTs) as Time} as any, sA.current!) } catch {}
+    return () => { try { chart.current?.clearCrosshairPosition() } catch {} }
   }, [hoveredTs])
 
-  function zoomRange(seconds: number) {
-    if (!chartRef.current) return
-    const now = Math.floor(Date.now() / 1000)
-    chartRef.current.timeScale().setVisibleRange({
-      from: (now - seconds) as Time,
-      to: now as Time,
-    })
-  }
-
-  function fitAll() {
-    chartRef.current?.timeScale().fitContent()
-  }
-
   return (
-    <div className="w-full h-full relative group/chart">
-      <div ref={ref} className="w-full h-full" />
-      <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover/chart:opacity-100 transition-opacity z-10">
-        {[['Fit', fitAll], ['1m', () => zoomRange(60)], ['5m', () => zoomRange(300)], ['15m', () => zoomRange(900)]] .map(([label, fn]) => (
-          <button
-            key={label as string}
-            onClick={fn as () => void}
-            className="text-[8px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors backdrop-blur-sm"
-          >
-            {label as string}
+    <div className="w-full h-full relative group/c">
+      <div ref={el} className="w-full h-full" />
+      <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover/c:opacity-100 transition-opacity z-10">
+        {([['Fit', () => chart.current?.timeScale().fitContent()],
+          ['1m', () => { const n = Math.floor(Date.now()/1000); chart.current?.timeScale().setVisibleRange({from: (n-60) as Time, to: n as Time}) }],
+          ['5m', () => { const n = Math.floor(Date.now()/1000); chart.current?.timeScale().setVisibleRange({from: (n-300) as Time, to: n as Time}) }],
+        ] as [string, () => void][]).map(([l, fn]) => (
+          <button key={l as string} onClick={fn as () => void}
+            className="text-[7px] px-1.5 py-0.5 rounded bg-black/50 text-muted-foreground hover:text-foreground backdrop-blur-sm">
+            {l as string}
           </button>
         ))}
       </div>
@@ -195,296 +215,129 @@ function MiniChart({ priceHistory, events, teamA, teamB, hoveredTs, sideA, sideB
   )
 }
 
-// ── Role icons ──────────────────────────────────────────────────────
+// ── Event feed ──────────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<string, string> = { top: 'TOP', jun: 'JNG', mid: 'MID', adc: 'ADC', sup: 'SUP' }
-const ROLE_ORDER = ['top', 'jun', 'mid', 'adc', 'sup']
-const DDRAGON = 'https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion'
-const CHAMP_FIXES: Record<string, string> = {
-  jarvaniv: 'JarvanIV', monkeyking: 'MonkeyKing', wukong: 'MonkeyKing',
-  renataglasc: 'Renata', bellaveth: 'Belveth', ksante: 'KSante',
-}
-function champIcon(slug: string): string {
-  const fixed = CHAMP_FIXES[slug.toLowerCase()] || slug.charAt(0).toUpperCase() + slug.slice(1)
-  return `${DDRAGON}/${fixed}.png`
-}
-
-// ── Score + Draft display ───────────────────────────────────────────
-
-function GameScoreAndDraft({ t1, t2, nameA, nameB, draft, mid, spread }: {
-  t1: GameTeam; t2: GameTeam; nameA: string; nameB: string
-  draft?: { picks: import('@/lib/types').DraftPick[] }
-  mid?: number; spread?: number
-}) {
-  const sideA = (t1.side || '?').toUpperCase()
-  const sideB = (t2.side || '?').toUpperCase()
-  const colorA = sideA === 'BLUE' ? 'text-blue-400 border-blue-400/40' : 'text-red-400 border-red-400/40'
-  const colorB = sideB === 'BLUE' ? 'text-blue-400 border-blue-400/40' : 'text-red-400 border-red-400/40'
-  const bgA = sideA === 'BLUE' ? 'bg-blue-500/5' : 'bg-red-500/5'
-  const bgB = sideB === 'BLUE' ? 'bg-blue-500/5' : 'bg-red-500/5'
-
-  const picksA: Record<string, string> = {}
-  const picksB: Record<string, string> = {}
-  for (const p of (draft?.picks || [])) {
-    if (p.team_id === t1.id) picksA[p.role] = p.champion_slug
-    if (p.team_id === t2.id) picksB[p.role] = p.champion_slug
-  }
-
-  return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-0 border-t border-border">
-      {/* Team A */}
-      <div className={`px-2 py-1.5 ${bgA}`}>
-        <div className="flex items-center gap-1.5 mb-1">
-          <Badge variant="outline" className={`text-[7px] h-3 px-1 ${colorA}`}>{sideA}</Badge>
-          <span className="text-[11px] font-bold truncate">{nameA}</span>
-        </div>
-        {Object.keys(picksA).length > 0 && (
-          <div className="flex gap-1">
-            {ROLE_ORDER.map(r => {
-              const champ = picksA[r]
-              return (
-                <div key={r} className="flex flex-col items-center" title={champ ? `${ROLE_LABELS[r]}: ${champ}` : ROLE_LABELS[r]}>
-                  {champ ? (
-                    <img src={champIcon(champ)} alt={champ} className="w-6 h-6 rounded-sm border border-border/30" loading="lazy"
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  ) : (
-                    <div className="w-6 h-6 rounded-sm bg-muted/30 flex items-center justify-center text-[7px] text-muted-foreground/40">?</div>
-                  )}
-                  <div className="text-[6px] text-muted-foreground/40 mt-px">{ROLE_LABELS[r]}</div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Score center */}
-      <div className="flex flex-col items-center justify-center px-4 border-x border-border/30 min-w-[180px] py-2 gap-1.5">
-        {/* Kill score */}
-        <div className="flex items-baseline gap-4">
-          <span className={`text-2xl font-mono font-black tabular-nums ${t1.kills > t2.kills ? 'text-green-400' : t1.kills < t2.kills ? 'text-red-400/60' : 'text-foreground'}`}>{t1.kills}</span>
-          <span className="text-muted-foreground/20 text-xs font-medium">vs</span>
-          <span className={`text-2xl font-mono font-black tabular-nums ${t2.kills > t1.kills ? 'text-green-400' : t2.kills < t1.kills ? 'text-red-400/60' : 'text-foreground'}`}>{t2.kills}</span>
-        </div>
-
-        {/* Prices */}
-        {mid != null && mid > 0 && (
-          <div className="flex items-center gap-1 text-[10px] font-mono tabular-nums">
-            <span className="font-bold" style={{ color: colorA }}>{(mid * 100).toFixed(0)}¢</span>
-            <span className="text-muted-foreground/15">—</span>
-            <span className="font-bold" style={{ color: colorB }}>{((1 - mid) * 100).toFixed(0)}¢</span>
-            {spread != null && spread < 0.5 && (
-              <span className={`ml-1 text-[8px] ${spread <= 0.01 ? 'text-green-400/50' : spread <= 0.03 ? 'text-yellow-400/50' : 'text-red-400/50'}`}>
-                {(spread * 100).toFixed(0)}¢
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Objectives */}
-        <div className="flex gap-2">
-          <ObjStat icon="🏰" a={t1.towers} b={t2.towers} />
-          <ObjStat icon="🐉" a={t1.drakes} b={t2.drakes} />
-          <ObjStat icon="👿" a={t1.nashors} b={t2.nashors} />
-          {(t1.inhibitors > 0 || t2.inhibitors > 0) && <ObjStat icon="💥" a={t1.inhibitors} b={t2.inhibitors} />}
-        </div>
-      </div>
-
-      {/* Team B */}
-      <div className={`px-2 py-1.5 text-right ${bgB}`}>
-        <div className="flex items-center gap-1.5 justify-end mb-1">
-          <span className="text-[11px] font-bold truncate">{nameB}</span>
-          <Badge variant="outline" className={`text-[7px] h-3 px-1 ${colorB}`}>{sideB}</Badge>
-        </div>
-        {Object.keys(picksB).length > 0 && (
-          <div className="flex gap-1 justify-end">
-            {ROLE_ORDER.map(r => {
-              const champ = picksB[r]
-              return (
-                <div key={r} className="flex flex-col items-center" title={champ ? `${ROLE_LABELS[r]}: ${champ}` : ROLE_LABELS[r]}>
-                  {champ ? (
-                    <img src={champIcon(champ)} alt={champ} className="w-6 h-6 rounded-sm border border-border/30" loading="lazy"
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  ) : (
-                    <div className="w-6 h-6 rounded-sm bg-muted/30 flex items-center justify-center text-[7px] text-muted-foreground/40">?</div>
-                  )}
-                  <div className="text-[6px] text-muted-foreground/40 mt-px">{ROLE_LABELS[r]}</div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ObjStat({ icon, a, b }: { icon: string; a: number; b: number }) {
-  return (
-    <div className="flex items-center gap-0.5 text-[9px] font-mono tabular-nums">
-      <span className="text-[8px]">{icon}</span>
-      <span className={a > b ? 'text-green-400 font-bold' : a > 0 ? 'text-foreground' : 'text-muted-foreground/30'}>{a}</span>
-      <span className="text-muted-foreground/20">:</span>
-      <span className={b > a ? 'text-green-400 font-bold' : b > 0 ? 'text-foreground' : 'text-muted-foreground/30'}>{b}</span>
-    </div>
-  )
-}
-
-// ── Event feed with expandable details ──────────────────────────────
-
-function EventFeed({ events, onHover, teamA, teamB, sideA, sideB }: {
-  events: EventData[]; onHover?: (ts: number | null) => void
+function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
+  events: EventData[]; onHover: (ts: number | null) => void
   teamA: string; teamB: string; sideA?: string; sideB?: string
 }) {
+  const [open, setOpen] = useState<number | null>(null)
+  if (!events.length) return null
   const cA = (sideA || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
   const cB = (sideB || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
-  if (events.length === 0) return null
-
-  function isA(t: string): boolean {
-    const lo = t.toLowerCase(), a = teamA.toLowerCase(), b = teamB.toLowerCase()
-    if (lo === a || lo.includes(a) || a.includes(lo)) return true
-    if (lo === b || lo.includes(b) || b.includes(lo)) return false
-    return lo.split(' ')[0] === a.split(' ')[0]
-  }
-  const ACTION_COLORS: Record<string, string> = {
-    TRADE: 'bg-green-500/20 text-green-400 border-green-500/30',
-    SPREAD: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
-    LOW: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
-    PRICED: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
-    PRICE: 'bg-muted text-muted-foreground border-border',
-    NEAR: 'bg-muted text-muted-foreground border-border',
-    TOWER: 'bg-muted/50 text-muted-foreground/50 border-transparent',
-  }
-  function actionColor(action: string) {
-    for (const [prefix, cls] of Object.entries(ACTION_COLORS)) {
-      if (action.startsWith(prefix)) return cls
-    }
-    return 'bg-muted text-muted-foreground border-border'
-  }
-
-  const reversed = [...events].reverse().slice(0, 10)
+  const aLo = teamA.toLowerCase()
+  const isA = (t: string) => { const lo = t.toLowerCase(); return lo.includes(aLo) || aLo.includes(lo) }
+  const rev = [...events].reverse().slice(0, 8)
 
   return (
-    <div className="border-t border-border font-mono text-[9px] max-h-52 overflow-y-auto">
-      {reversed.map((ev, i) => {
-        const isOpen = expandedIdx === i
+    <div className="border-t border-border/50 text-[9px] font-mono max-h-48 overflow-y-auto">
+      {rev.map((ev, i) => {
+        const forA = isA(ev.team)
+        const c = forA ? cA : cB
+        const isOpen = open === i
+        const isBuyA = ev.signal_dir === 'buy_a'
+        const showBuyIntent = Boolean(ev.signal_dir)
+        const limPx = inferredBuyLimit(ev)
+        const refPx = isBuyA ? ev.buy_price_a : ev.buy_price_b
+        const buyTitle = ev.signal_dir
+          ? [
+              `Buy outcome token ${isBuyA ? 'A' : 'B'} (${isBuyA ? teamA : teamB})`,
+              limPx != null ? `FAK limit ≤ ${(limPx * 100).toFixed(1)}¢` : '',
+              refPx > 0 ? `Book ref ${(refPx * 100).toFixed(1)}¢ (+1¢ tick → limit)` : '',
+            ].filter(Boolean).join('\n')
+          : ''
         return (
-          <div key={i}
-            onMouseEnter={() => onHover?.(ev.ts)}
-            onMouseLeave={() => onHover?.(null)}
-          >
-            {/* Row */}
-            <div
-              onClick={() => setExpandedIdx(isOpen ? null : i)}
-              className={`flex gap-1 items-center px-2 py-0.5 cursor-pointer transition-colors
-                ${isOpen ? 'bg-muted/50' : 'hover:bg-muted/20'}
-                ${i === 0 ? 'animate-in fade-in slide-in-from-top-1 duration-200' : ''}`}
-            >
-              <span className="text-muted-foreground/30 w-[70px] shrink-0">{ev.time}</span>
-              <span className="shrink-0 w-4">{EVT_EMOJI[ev.etype] || '•'}</span>
-              <span className="font-bold w-10 shrink-0" style={{ color: isA(ev.team) ? cA : cB }}>
-                {ev.etype.toUpperCase().slice(0, 5)}
-              </span>
-              <span className="text-muted-foreground/70 w-10 shrink-0">[{ev.clock}]</span>
-              <span className="truncate flex-1" style={{ color: (isA(ev.team) ? cA : cB) + 'b0' }}>{ev.desc}</span>
-              <span className="text-muted-foreground/30 w-10 text-right shrink-0">{(ev.mid * 100).toFixed(1)}¢</span>
-              <Badge variant="outline" className={`text-[6px] h-2.5 px-1 shrink-0 ${actionColor(ev.action)}`}>
-                {ev.action === 'TRADE' ? 'BUY' : ev.action.replace(/_/g, ' ').slice(0, 12)}
-              </Badge>
-              <span className="text-muted-foreground/20 shrink-0">{isOpen ? '▼' : '▸'}</span>
-            </div>
-
-            {/* Expanded details */}
-            {isOpen && (
-              <div className="px-3 py-1.5 bg-background/60 border-y border-border/30 space-y-1 text-[8px]">
-                {/* Why / Action */}
-                <div className="flex gap-4">
-                  <div className="flex-1 space-y-0.5">
-                    <div className="text-muted-foreground/50 uppercase tracking-wider">Decision</div>
-                    <div className={ev.action === 'TRADE' ? 'text-green-400 font-bold' : 'text-orange-400'}>
-                      {ev.action === 'TRADE'
-                        ? `BUY ${ev.signal_dir?.toUpperCase()} $${ev.signal_size?.toFixed(2)} — ${ev.signal_reason}`
-                        : ev.action.replace(/_/g, ' ')}
+          <div key={i} onMouseEnter={() => onHover(ev.ts)} onMouseLeave={() => onHover(null)}>
+            <div onClick={() => setOpen(isOpen ? null : i)}
+              className={`flex items-center gap-1.5 px-2 py-[3px] cursor-pointer transition-colors ${isOpen ? 'bg-white/[0.03]' : 'hover:bg-white/[0.02]'}`}>
+              <span className="text-[#444] w-[68px] shrink-0">{ev.time}</span>
+              <span className="w-3 shrink-0">{EVT_EMOJI[ev.etype] || '•'}</span>
+              <span className="font-bold w-10 shrink-0" style={{color: c}}>{ev.etype.toUpperCase().slice(0,5)}</span>
+              <span className="text-[#444] w-10 shrink-0">[{ev.clock}]</span>
+              <span className="truncate flex-1 min-w-0" style={{color: c + 'b0'}}>{ev.desc}</span>
+              {showBuyIntent && (
+                  <div className="w-[108px] shrink-0 text-right leading-tight" title={buyTitle}>
+                    <div className="text-[8px] font-bold" style={{ color: isBuyA ? cA : cB }}>
+                      Buy {isBuyA ? 'A' : 'B'} · {(isBuyA ? teamA : teamB).split(/\s+/)[0]?.slice(0, 10) || '?'}
                     </div>
-                    {ev.signal_impact != null && (
-                      <div className="text-muted-foreground/60">
-                        Impact: {(ev.signal_impact * 100).toFixed(1)}c | Conf: {((ev.signal_confidence || 0) * 100).toFixed(0)}%
-                      </div>
+                    {limPx != null && (
+                      <div className="text-[7px] text-[#999]">≤{(limPx * 100).toFixed(1)}¢</div>
                     )}
                   </div>
+                )}
+              <span className="text-[#555] w-10 text-right shrink-0" title="Mid at signal">{(ev.mid*100).toFixed(1)}¢</span>
+              <Badge variant="outline" className={`text-[6px] h-2.5 px-1 shrink-0 ${eventActionBadge(ev).className}`} title={
+                ev.action === 'TRADE' && ev.trade_exec === 'dry_run'
+                  ? 'Paper trade — no Polymarket order (run with --live for real orders)'
+                  : ev.action === 'TRADE' && ev.trade_exec === 'polymarket_ok'
+                    ? 'Fill verified — position opened in bot; check Polymarket Activity for your wallet'
+                    : ev.action === 'TRADE' && ev.trade_exec === 'no_fill_confirmed'
+                      ? 'Order id returned but no matching fill in trades API — bot did not open a position'
+                      : ev.action === 'TRADE' && ev.trade_exec === 'fill_rejected'
+                        ? 'Fill size failed sanity check — no position opened'
+                        : ev.action === 'GATED' && ev.gate_reason
+                          ? `Blocked: ${ev.gate_reason}`
+                          : ev.action === 'TRADE' && !ev.trade_exec
+                            ? 'Legacy row: signal only, execution not recorded'
+                            : undefined
+              }>
+                {eventActionBadge(ev).label}
+              </Badge>
+              <span className="text-[#333] shrink-0">{isOpen ? '▾' : '▸'}</span>
+            </div>
+            {isOpen && (
+              <div className="px-3 py-2 bg-black/20 border-y border-white/[0.03] text-[8px] space-y-1.5">
+                {ev.exec_story && (
+                  <pre className="whitespace-pre-wrap font-mono text-[7px] leading-snug text-[#bbb] border border-white/[0.06] rounded-md p-2 bg-black/30 max-h-40 overflow-y-auto">
+                    {ev.exec_story}
+                  </pre>
+                )}
+                {ev.action === 'TRADE' && ev.trade_exec === 'polymarket_ok' && (
+                  <div className="text-green-400 font-bold">Fill verified — {ev.signal_dir?.toUpperCase()} ${ev.signal_size?.toFixed(2)} — {ev.signal_reason}</div>
+                )}
+                {ev.action === 'TRADE' && ev.trade_exec === 'dry_run' && (
+                  <div className="text-amber-400 font-bold">Dry run: simulated position only — no order on Polymarket. Start trader with <span className="font-mono">--live</span> for real trades.</div>
+                )}
+                {ev.action === 'TRADE' && ev.trade_exec === 'no_fill_confirmed' && (
+                  <div className="text-slate-300 font-bold">No confirmed fill — bot did not open a position. If Polymarket shows a stray order, cancel/reconcile in the app.</div>
+                )}
+                {ev.action === 'TRADE' && ev.trade_exec === 'fill_rejected' && (
+                  <div className="text-red-300 font-bold">Reported fill size {!Number.isNaN(Number(ev.fill_reported_shares)) ? `(${Number(ev.fill_reported_shares).toFixed(2)} sh)` : ''} failed checks — no position. {ev.clob_order_id ? `Order ${ev.clob_order_id.slice(0, 16)}…` : ''}</div>
+                )}
+                {ev.action === 'TRADE' && (ev.trade_exec === 'no_order_id' || ev.trade_exec === 'order_error') && (
+                  <div className="text-red-400 font-bold">CLOB order did not complete — {ev.order_error || 'no order id from API'}</div>
+                )}
+                {ev.action === 'TRADE' && !ev.trade_exec && (
+                  <div className="text-[#888] font-bold">Signal only (legacy): {ev.signal_dir?.toUpperCase()} ${ev.signal_size?.toFixed(2)} — {ev.signal_reason}</div>
+                )}
+                {ev.action === 'GATED' && (
+                  <div className="text-yellow-400 font-bold">Risk gate: {ev.gate_reason || 'blocked'}</div>
+                )}
+                {(ev.action === 'SKIP_SIZE' || ev.action === 'ORDER_FAIL') && (
+                  <div className="text-orange-400 font-bold">{ev.action.replace(/_/g, ' ')}{ev.order_error ? ` — ${ev.order_error}` : ''}</div>
+                )}
+                {ev.action !== 'TRADE' && ev.action !== 'GATED' && ev.action !== 'SKIP_SIZE' && ev.action !== 'ORDER_FAIL' && (
+                  <div className="text-orange-400">{ev.action.replace(/_/g,' ')}</div>
+                )}
+                <div className="flex gap-4 text-[#666]">
+                  <span>Mid <span className="text-[#999]">{(ev.mid*100).toFixed(1)}¢</span></span>
+                  <span>Bid <span className="text-green-400/60">{(ev.bid*100).toFixed(1)}¢</span></span>
+                  <span>Ask <span className="text-red-400/60">{(ev.ask*100).toFixed(1)}¢</span></span>
+                  <span>Sprd <span className="text-[#999]">{(ev.spread*100).toFixed(1)}¢</span></span>
+                  <span>Δ2s <span className={ev.recent_move_2s > 0 ? 'text-green-400/60' : ev.recent_move_2s < 0 ? 'text-red-400/60' : 'text-[#999]'}>
+                    {ev.recent_move_2s > 0 ? '+' : ''}{(ev.recent_move_2s*100).toFixed(1)}¢
+                  </span></span>
+                  <span>Mkt <span className="text-[#999]">{ev.market_type}</span></span>
                 </div>
-
-                {/* Prices */}
-                <div className="flex gap-4">
-                  <div>
-                    <span className="text-muted-foreground/50">Mid </span>
-                    <span>{(ev.mid * 100).toFixed(1)}¢</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground/50">Bid </span>
-                    <span className="text-green-400">{(ev.bid * 100).toFixed(1)}¢</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground/50">Ask </span>
-                    <span className="text-red-400">{(ev.ask * 100).toFixed(1)}¢</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground/50">Spread </span>
-                    <span>{(ev.spread * 100).toFixed(1)}¢</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground/50">Move(2s) </span>
-                    <span className={ev.recent_move_2s > 0 ? 'text-green-400' : ev.recent_move_2s < 0 ? 'text-red-400' : ''}>
-                      {ev.recent_move_2s > 0 ? '+' : ''}{(ev.recent_move_2s * 100).toFixed(1)}¢
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div>
-                    <span className="text-muted-foreground/50">Buy A: </span>
-                    <span>{(ev.buy_price_a * 100).toFixed(1)}¢</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground/50">Buy B: </span>
-                    <span>{(ev.buy_price_b * 100).toFixed(1)}¢</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground/50">Mkt: </span>
-                    <span>{ev.market_type}</span>
-                  </div>
-                  {ev.holding && (
-                    <div>
-                      <span className="text-muted-foreground/50">Holding: </span>
-                      <span className="text-yellow-400">{ev.holding}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Orderbook snapshot */}
                 {ev.book_snapshot && (ev.book_snapshot.bids.length > 0 || ev.book_snapshot.asks.length > 0) && (
-                  <div>
-                    <div className="text-muted-foreground/50 uppercase tracking-wider mb-0.5">Book Snapshot</div>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        {ev.book_snapshot.bids.slice(0, 4).map((b, j) => (
-                          <div key={j} className="flex justify-between">
-                            <span className="text-green-400/70">{(b.p * 100).toFixed(1)}¢</span>
-                            <span className="text-muted-foreground/50">${Math.round(b.s * b.p)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="w-px bg-border/30" />
-                      <div className="flex-1">
-                        {ev.book_snapshot.asks.slice(0, 4).map((a, j) => (
-                          <div key={j} className="flex justify-between">
-                            <span className="text-red-400/70">{(a.p * 100).toFixed(1)}¢</span>
-                            <span className="text-muted-foreground/50">${Math.round(a.s * a.p)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">{ev.book_snapshot.bids.slice(0,4).map((b,j) => (
+                      <div key={j} className="flex justify-between"><span className="text-green-400/50">{(b.p*100).toFixed(1)}¢</span><span className="text-[#555]">${Math.round(b.s*b.p)}</span></div>
+                    ))}</div>
+                    <div className="w-px bg-white/[0.05]" />
+                    <div className="flex-1">{ev.book_snapshot.asks.slice(0,4).map((a,j) => (
+                      <div key={j} className="flex justify-between"><span className="text-red-400/50">{(a.p*100).toFixed(1)}¢</span><span className="text-[#555]">${Math.round(a.s*a.p)}</span></div>
+                    ))}</div>
                   </div>
                 )}
               </div>
@@ -496,186 +349,279 @@ function EventFeed({ events, onHover, teamA, teamB, sideA, sideB }: {
   )
 }
 
-// ── Mini Book ───────────────────────────────────────────────────────
-
-function MiniBook({ bids, asks }: { bids: { p: number; s: number }[]; asks: { p: number; s: number }[] }) {
-  if (bids.length === 0 && asks.length === 0) return null
-
-  const sortedBids = [...bids].sort((a, b) => b.p - a.p).slice(0, 5)
-  const sortedAsks = [...asks].sort((a, b) => a.p - b.p).slice(0, 5)
-  const maxSize = Math.max(...sortedBids.map(b => b.s), ...sortedAsks.map(a => a.s), 1)
-
-  return (
-    <div className="flex gap-1 text-[8px] font-mono tabular-nums px-2 py-1 border-t border-border">
-      {/* Bids: highest (best) first */}
-      <div className="flex-1 space-y-px">
-        {sortedBids.map((b, i) => (
-          <div key={i} className="relative flex justify-between px-1 rounded-sm">
-            <div className="absolute inset-y-0 right-0 bg-green-500/10 rounded-sm" style={{ width: `${(b.s / maxSize) * 100}%` }} />
-            <span className="relative text-green-400">{(b.p * 100).toFixed(1)}</span>
-            <span className="relative text-muted-foreground">${Math.round(b.s * b.p)}</span>
-          </div>
-        ))}
-      </div>
-      {/* Asks: lowest (best) first */}
-      <div className="flex-1 space-y-px">
-        {sortedAsks.map((a, i) => (
-          <div key={i} className="relative flex justify-between px-1 rounded-sm">
-            <div className="absolute inset-y-0 left-0 bg-red-500/10 rounded-sm" style={{ width: `${(a.s / maxSize) * 100}%` }} />
-            <span className="relative text-red-400">{(a.p * 100).toFixed(1)}</span>
-            <span className="relative text-muted-foreground">${Math.round(a.s * a.p)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── Match Card ──────────────────────────────────────────────────────
 
 export function MatchCard({ match, position }: { match: MatchData; position?: PositionData }) {
   const active = match.games.find(g => g.status === 'running')
     || [...match.games].reverse().find(g => g.status === 'finished')
     || match.games[0]
-
-  const t1 = active?.teams?.[0]
-  const t2 = active?.teams?.[1]
+  const t1 = active?.teams?.[0], t2 = active?.teams?.[1]
   const [clock, setClock] = useState('--:--')
-  const [hoveredTs, setHoveredTs] = useState<number | null>(null)
+  const [hTs, setHTs] = useState<number | null>(null)
+  const g = match.gamma || {} as any
+  const sA = (t1?.side || '').toLowerCase(), sB = (t2?.side || '').toLowerCase()
+  const cA = sA === 'blue' ? '#58a6ff' : '#f85149'
+  const cB = sB === 'blue' ? '#58a6ff' : '#f85149'
 
   useEffect(() => {
-    if (!active?.timer || active.timer.paused) {
-      setClock(fmtGameClock(active?.timer)); return
-    }
+    if (!active?.timer || active.timer.paused) { setClock(fmtGameClock(active?.timer)); return }
     const iv = setInterval(() => setClock(fmtGameClock(active.timer)), 1000)
-    setClock(fmtGameClock(active.timer))
-    return () => clearInterval(iv)
+    setClock(fmtGameClock(active.timer)); return () => clearInterval(iv)
   }, [active?.timer])
 
-  const isFinished = !match.active
-  const opacity = isFinished ? 'opacity-50' : ''
+  const [boardAgeTick, setBoardAgeTick] = useState(0)
+  useEffect(() => {
+    const iv = setInterval(() => setBoardAgeTick(x => x + 1), 1000)
+    return () => clearInterval(iv)
+  }, [])
+  const boardAgeSec = useMemo(() => {
+    if (!match.llf_scoreboard_updated_at || match.llf_scoreboard_updated_at <= 0) return null
+    return Math.max(0, Math.floor(Date.now() / 1000 - match.llf_scoreboard_updated_at))
+  }, [boardAgeTick, match.llf_scoreboard_updated_at])
+
+  const picks1: Record<string,string> = {}, picks2: Record<string,string> = {}
+  for (const p of (active?.draft?.picks || [])) {
+    if (t1 && p.team_id === t1.id) picks1[p.role] = p.champion_slug
+    if (t2 && p.team_id === t2.id) picks2[p.role] = p.champion_slug
+  }
 
   return (
-    <Card className={`overflow-hidden ${opacity}`}>
+    <Card className={`overflow-hidden ${!match.active ? 'opacity-40' : ''}`}>
       <CardContent className="p-0">
-        {/* Header: match name, status, price */}
-        <div className="flex items-center justify-between px-3 py-1.5 bg-card">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-bold truncate">{match.name}</span>
-            {match.league && <span className="text-[8px] text-muted-foreground/40">{match.league}</span>}
-            {isFinished && <Badge variant="secondary" className="text-[7px] h-3 px-1">DONE</Badge>}
-            {match.llf_connected && <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" title="LLF connected" />}
-            {active && !isFinished && (
+
+        {/* ── Top bar ── */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[11px] font-bold truncate">{match.name}</span>
+            {g.league && <span className="text-[7px] text-[#555] bg-white/[0.03] rounded px-1 py-px">{g.league}{g.league_tier ? ` T${g.league_tier}` : ''}</span>}
+            {g.live && <Badge variant="destructive" className="text-[7px] h-3.5 px-1.5 animate-pulse">LIVE</Badge>}
+            {match.llf_status && (
+              <span className={`text-[7px] px-1 py-px rounded font-mono ${
+                match.llf_status === 'streaming' ? 'bg-green-500/20 text-green-400' :
+                match.llf_status.startsWith('hello') ? 'bg-yellow-500/20 text-yellow-400' :
+                match.llf_status === 'connected' || match.llf_status === 'scoreboard' ? 'bg-blue-500/20 text-blue-400' :
+                match.llf_status.startsWith('not_open') ? 'bg-orange-500/15 text-orange-400/70' :
+                match.llf_status === 'timeout' ? 'bg-red-500/15 text-red-400/70' :
+                'bg-white/5 text-[#666]'
+              }`} title={`LLF: ${match.llf_status} | msgs: ${match.llf_msg_count} | last: ${match.llf_last_msg_age > 0 ? match.llf_last_msg_age.toFixed(0) + 's ago' : '—'} (${match.llf_last_msg_type})`}>
+                LLF:{match.llf_status.split(':')[0].split('(')[0]}
+                {match.llf_last_msg_age > 0 && match.llf_last_msg_age < 999 && <span className="text-[#555] ml-0.5">{match.llf_last_msg_age.toFixed(0)}s</span>}
+              </span>
+            )}
+            {active && active.status === 'running' && (
               <>
-                {active.status === 'running' && <Badge variant="destructive" className="text-[7px] h-3 px-1">LIVE</Badge>}
-                <span className="text-[10px] text-muted-foreground">G{active.position}</span>
-                <span className="text-sm font-mono font-bold tabular-nums">{clock}</span>
+                <span className="text-[9px] text-[#666]">G{active.position}</span>
+                <span className="text-sm font-mono font-black tabular-nums">{clock}</span>
               </>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0 text-[10px]">
-            {match.event_count > 0 && <span className="text-muted-foreground/40">{match.event_count} evts</span>}
-            {match.has_book && (
-              <>
-                <span className="font-mono font-bold text-sm tabular-nums">{fmtCents(match.mid)}</span>
-                <span className="text-muted-foreground text-[9px]">sprd {fmtCents(match.spread)}</span>
-              </>
+          <div className="flex items-center gap-2 shrink-0">
+            {match.has_book && match.mid > 0 && (
+              <span className="text-lg font-mono font-black tabular-nums">{fmtCents(match.mid)}</span>
             )}
+            {match.has_book && <span className="text-[8px] text-[#555]">sprd {fmtCents(match.spread)}</span>}
           </div>
         </div>
 
-        {/* Position bar */}
+        {/* ── Meta bar ── */}
+        {(g.volume > 0 || g.score) && (
+          <div className="flex items-center gap-3 px-3 py-1 text-[8px] text-[#555] font-mono bg-white/[0.01] border-b border-border/20">
+            {g.score && <span className="text-[#888]">{g.score}</span>}
+            {g.volume > 0 && <span>Vol <span className="text-[#888]">${(g.volume/1000).toFixed(0)}K</span></span>}
+            {g.liquidity > 0 && <span>Liq <span className="text-[#888]">${(g.liquidity/1000).toFixed(0)}K</span></span>}
+            {g.open_interest > 0 && <span>OI <span className="text-[#888]">${(g.open_interest/1000).toFixed(0)}K</span></span>}
+            {g.start_time && <span>Start <span className="text-[#888]">{new Date(g.start_time).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} {new Date(g.start_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Almaty'})} ALT</span></span>}
+            {match.total_markets > 0 && <span>{match.total_markets} mkts</span>}
+          </div>
+        )}
+
+        {/* ── Position ── */}
         {position && !position.closed && (
-          <div className={`px-3 py-0.5 text-[9px] font-mono ${position.unrealized_pnl >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-            {position.direction.toUpperCase()} {position.size.toFixed(1)} @ {(position.entry_price * 100).toFixed(1)}¢
-            → {position.unrealized_pnl >= 0 ? '+' : ''}{(position.unrealized_pnl * 100).toFixed(1)}¢
+          <div className={`px-3 py-1 text-[9px] font-mono font-bold ${position.unrealized_pnl >= 0 ? 'bg-green-500/8 text-green-400' : 'bg-red-500/8 text-red-400'}`}>
+            ▶ {position.direction.toUpperCase()} {position.size.toFixed(1)} @ {(position.entry_price*100).toFixed(1)}¢
+            → {position.unrealized_pnl >= 0 ? '+' : ''}{(position.unrealized_pnl*100).toFixed(1)}¢
             ({position.age_sec.toFixed(0)}s)
           </div>
         )}
 
-        {/* Score + Draft */}
+        {/* ── Teams + Score ── */}
         {t1 && t2 && (
-          <GameScoreAndDraft t1={t1} t2={t2} nameA={match.team_a} nameB={match.team_b}
-            draft={active?.draft} mid={match.mid} spread={match.spread} />
-        )}
+          <div className="grid grid-cols-[1fr_auto_1fr] border-b border-border/30">
+            {/* Team A */}
+            <div className="px-3 py-2" style={{background: cA + '06'}}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <div className="w-1 h-4 rounded-full" style={{background: cA}} />
+                <span className="text-[11px] font-bold truncate">{match.team_a}</span>
+                <span className="text-[7px] uppercase tracking-wider" style={{color: cA + '80'}}>{sA || '?'}</span>
+              </div>
+              {Object.keys(picks1).length > 0 && (
+                <div className="flex gap-1">
+                  {ROLES.map(r => picks1[r] ? (
+                    <img key={r} src={champUrl(picks1[r])} alt={picks1[r]} title={`${r.toUpperCase()}: ${picks1[r]}`}
+                      className="w-7 h-7 rounded border border-white/10" loading="lazy"
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  ) : <div key={r} className="w-7 h-7 rounded bg-white/[0.03] border border-white/5" />)}
+                </div>
+              )}
+            </div>
 
-        {/* Chart with events */}
-        {match.price_history.length > 0 && (
-          <div className="h-40 border-t border-border">
-            <MiniChart
-              priceHistory={match.price_history}
-              events={match.match_events || []}
-              teamA={match.team_a}
-              teamB={match.team_b}
-              sideA={t1?.side || undefined}
-              sideB={t2?.side || undefined}
-              hoveredTs={hoveredTs}
-            />
+            {/* Score */}
+            <div className="flex flex-col items-center justify-center px-4 min-w-[150px] border-x border-border/20 py-2">
+              <div className="flex items-baseline gap-3">
+                <span className={`text-2xl font-mono font-black ${t1.kills > t2.kills ? 'text-green-400' : t1.kills < t2.kills ? 'text-red-400/50' : 'text-[#888]'}`}>{t1.kills}</span>
+                <span className="text-[10px] text-[#333]">vs</span>
+                <span className={`text-2xl font-mono font-black ${t2.kills > t1.kills ? 'text-green-400' : t2.kills < t1.kills ? 'text-red-400/50' : 'text-[#888]'}`}>{t2.kills}</span>
+              </div>
+              {match.mid > 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold mt-0.5">
+                  <span style={{color: cA}}>{(match.mid*100).toFixed(0)}¢</span>
+                  <span className="text-[#333]">—</span>
+                  <span style={{color: cB}}>{((1-match.mid)*100).toFixed(0)}¢</span>
+                </div>
+              )}
+              <div className="flex gap-2.5 mt-1 text-[9px] font-mono">
+                <span title="Towers">🏰 <span className={t1.towers > t2.towers ? 'text-green-400' : 'text-[#666]'}>{t1.towers}</span>:<span className={t2.towers > t1.towers ? 'text-green-400' : 'text-[#666]'}>{t2.towers}</span></span>
+                <span title="Drakes">🐉 <span className={t1.drakes > t2.drakes ? 'text-green-400' : 'text-[#666]'}>{t1.drakes}</span>:<span className={t2.drakes > t1.drakes ? 'text-green-400' : 'text-[#666]'}>{t2.drakes}</span></span>
+                <span title="Barons">👿 <span className={t1.nashors > t2.nashors ? 'text-green-400' : 'text-[#666]'}>{t1.nashors}</span>:<span className={t2.nashors > t1.nashors ? 'text-green-400' : 'text-[#666]'}>{t2.nashors}</span></span>
+                {(t1.inhibitors > 0 || t2.inhibitors > 0) && <span title="Inhibs">💥 {t1.inhibitors}:{t2.inhibitors}</span>}
+              </div>
+              <div
+                className={`text-[7px] font-mono mt-0.5 tabular-nums ${
+                  boardAgeSec === null ? 'text-[#444]' :
+                  boardAgeSec < 20 ? 'text-[#555]' :
+                  boardAgeSec < 45 ? 'text-amber-500/80' : 'text-orange-400/90'
+                }`}
+                title={match.llf_scoreboard_updated_at ? `LLF scoreboard snapshot (Unix ${match.llf_scoreboard_updated_at.toFixed(3)})` : 'No scoreboard timestamp yet'}
+              >
+                {boardAgeSec === null ? 'scoreboard —' : `scoreboard ${boardAgeSec}s ago`}
+              </div>
+            </div>
+
+            {/* Team B */}
+            <div className="px-3 py-2 text-right" style={{background: cB + '06'}}>
+              <div className="flex items-center gap-1.5 justify-end mb-1.5">
+                <span className="text-[7px] uppercase tracking-wider" style={{color: cB + '80'}}>{sB || '?'}</span>
+                <span className="text-[11px] font-bold truncate">{match.team_b}</span>
+                <div className="w-1 h-4 rounded-full" style={{background: cB}} />
+              </div>
+              {Object.keys(picks2).length > 0 && (
+                <div className="flex gap-1 justify-end">
+                  {ROLES.map(r => picks2[r] ? (
+                    <img key={r} src={champUrl(picks2[r])} alt={picks2[r]} title={`${r.toUpperCase()}: ${picks2[r]}`}
+                      className="w-7 h-7 rounded border border-white/10" loading="lazy"
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  ) : <div key={r} className="w-7 h-7 rounded bg-white/[0.03] border border-white/5" />)}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Event feed — expandable with full details */}
-        <EventFeed events={match.match_events || []} onHover={setHoveredTs}
-          teamA={match.team_a} teamB={match.team_b} sideA={t1?.side || undefined} sideB={t2?.side || undefined} />
+        {/* ── Chart ── */}
+        {(match.price_history.length > 0 || (match.match_events || []).length > 0) && (
+          <div className="h-44">
+            <Chart priceHistory={match.price_history} events={match.match_events || []}
+              teamA={match.team_a} teamB={match.team_b} sideA={t1?.side||undefined} sideB={t2?.side||undefined} hoveredTs={hTs} />
+          </div>
+        )}
 
-        {/* Orderbook */}
-        {match.has_book && <MiniBook bids={match.book_bids} asks={match.book_asks} />}
+        {/* ── Events ── */}
+        <Events events={match.match_events || []} onHover={setHTs}
+          teamA={match.team_a} teamB={match.team_b} sideA={t1?.side||undefined} sideB={t2?.side||undefined} />
+
+        {/* ── Book ── */}
+        {match.has_book && (match.book_bids.length > 0 || match.book_asks.length > 0) && (
+          <div className="flex gap-px text-[8px] font-mono tabular-nums border-t border-border/30 bg-white/[0.01]">
+            <div className="flex-1 p-1.5 space-y-px">
+              {[...match.book_bids].sort((a,b)=>b.p-a.p).slice(0,5).map((b,i) => {
+                const max = Math.max(...match.book_bids.map(x=>x.s), 1)
+                return (
+                  <div key={i} className="relative flex justify-between px-1 py-px rounded-sm">
+                    <div className="absolute inset-y-0 right-0 bg-green-500/8 rounded-sm" style={{width:`${(b.s/max)*100}%`}} />
+                    <span className="relative text-green-400/70">{(b.p*100).toFixed(1)}</span>
+                    <span className="relative text-[#555]">${Math.round(b.s*b.p)}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="w-px bg-border/20" />
+            <div className="flex-1 p-1.5 space-y-px">
+              {[...match.book_asks].sort((a,b)=>a.p-b.p).slice(0,5).map((a,i) => {
+                const max = Math.max(...match.book_asks.map(x=>x.s), 1)
+                return (
+                  <div key={i} className="relative flex justify-between px-1 py-px rounded-sm">
+                    <div className="absolute inset-y-0 left-0 bg-red-500/8 rounded-sm" style={{width:`${(a.s/max)*100}%`}} />
+                    <span className="relative text-red-400/70">{(a.p*100).toFixed(1)}</span>
+                    <span className="relative text-[#555]">${Math.round(a.s*a.p)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-// ── Match Grid ──────────────────────────────────────────────────────
+// ── Grid ────────────────────────────────────────────────────────────
 
 export function MatchGrid({ data }: { data?: import('@/lib/types').TraderState }) {
   const [showAll, setShowAll] = useState(false)
+  if (!data) return <div className="flex items-center justify-center py-16 text-[#555] text-sm">Connecting to Oracle-LoL...</div>
 
-  if (!data) {
-    return <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Connecting to Oracle-LoL...</div>
+  const all = Object.values(data.matches)
+  const isLive = (m: typeof all[0]) => {
+    if (!m.active || !m.has_market) return false
+    if (m.status === 'running') return true
+    if (m.gamma?.live) return true
+    if (m.event_count > 0) return true
+    return false
   }
-
-  const matches = Object.values(data.matches)
-  const live = matches.filter(m => m.active && m.has_market && (m.has_book || m.llf_connected || m.event_count > 0))
-    .sort((a, b) => b.event_count - a.event_count)
-  const upcoming = matches.filter(m => m.active && m.has_market && !m.has_book && !m.llf_connected && m.event_count === 0)
-  const noMarket = matches.filter(m => m.active && !m.has_market)
-  const finished = matches.filter(m => !m.active).sort((a, b) => b.finished_at - a.finished_at)
+  const live = all.filter(isLive).sort((a, b) => b.event_count - a.event_count)
+  const upcoming = all.filter(m => m.active && m.has_market && !isLive(m))
+    .sort((a, b) => new Date(a.gamma?.start_time || '').getTime() - new Date(b.gamma?.start_time || '').getTime())
+  const rest = all.filter(m => !isLive(m) && !(m.active && m.has_market))
 
   return (
     <div className="px-4">
       {live.length > 0 && (
         <>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+          <div className="text-[9px] text-[#555] uppercase tracking-widest mb-2 font-semibold">
             Live ({live.length})
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 mb-4">
-            {live.map(m => {
-              const pos = data.positions.find(p => p.match_id === m.match_id && !p.closed)
-              return <MatchCard key={m.match_id} match={m} position={pos} />
-            })}
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 mb-3">
+            {live.map(m => <MatchCard key={m.match_id} match={m} position={data.positions.find(p => p.match_id === m.match_id && !p.closed)} />)}
           </div>
         </>
       )}
-
       {upcoming.length > 0 && (
         <>
-          <button onClick={() => setShowAll(!showAll)}
-            className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 hover:text-foreground flex items-center gap-1">
-            <span>{showAll ? '▼' : '▸'}</span>
-            Upcoming ({upcoming.length}) · No Market ({noMarket.length}) · Finished ({finished.length})
-          </button>
-          {showAll && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 mb-4">
-              {upcoming.map(m => <MatchCard key={m.match_id} match={m} />)}
-              {finished.map(m => <MatchCard key={m.match_id} match={m} />)}
-            </div>
-          )}
+          <div className="text-[9px] text-[#555] uppercase tracking-widest mb-2 font-semibold mt-2">
+            Upcoming ({upcoming.length})
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 mb-3">
+            {upcoming.map(m => <MatchCard key={m.match_id} match={m} />)}
+          </div>
         </>
       )}
-
-      {live.length === 0 && upcoming.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground text-sm">No live matches with Polymarket markets found</div>
+      {rest.length > 0 && (
+        <button onClick={() => setShowAll(!showAll)}
+          className="text-[9px] text-[#444] uppercase tracking-widest mb-2 hover:text-[#888] transition-colors flex items-center gap-1 font-semibold mt-2">
+          {showAll ? '▾' : '▸'} No Market / Other ({rest.length})
+        </button>
       )}
+      {showAll && (
+        <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 mb-3 opacity-40">
+          {rest.slice(0, 12).map(m => (
+            <div key={m.match_id} className="text-[9px] text-[#555] bg-white/[0.02] rounded-lg px-3 py-2 border border-white/[0.03]">
+              <div className="font-bold text-[10px] text-[#777]">{m.name}</div>
+              <div className="text-[#444]">{m.league} · {m.status}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {live.length === 0 && upcoming.length === 0 && <div className="text-center py-16 text-[#555] text-sm">No live matches</div>}
     </div>
   )
 }

@@ -19,7 +19,7 @@ from pathlib import Path
 import httpx
 
 
-def dump(url: str = "http://localhost:8422") -> str:
+def dump(url: str = "http://38.180.152.197:8430") -> str:
     r = httpx.get(f"{url}/api/state", timeout=5)
     if r.status_code != 200:
         return f"ERROR: API returned {r.status_code}\n{r.text}"
@@ -127,7 +127,7 @@ def dump(url: str = "http://localhost:8422") -> str:
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser(description="Oracle-LoL Debug Dump")
-    p.add_argument("--url", default="http://localhost:8422")
+    p.add_argument("--url", default="http://38.180.152.197:8430")
     p.add_argument("--save", action="store_true", help="Save to logs/debug_*.txt")
     args = p.parse_args()
 
