@@ -205,8 +205,8 @@ class SignalModel:
                           (mid_a < 0.25 and direction == "buy_a")
         if buying_underdog:
             is_major_objective = event.etype in (EventType.BARON, EventType.INHIBITOR)
-            is_teamfight = event.etype == EventType.KILL and teamfight_kills >= 3
-            if not (is_major_objective or is_teamfight):
+            is_stacked_kills = event.etype == EventType.KILL and teamfight_kills >= 2
+            if not (is_major_objective or is_stacked_kills):
                 return None, f"UNDERDOG_WEAK_sig_{event.etype.value}_stk{teamfight_kills}_mid{mid_a:.3f}"
         if event.etype == EventType.KILL:
             if already_priced_lo:
