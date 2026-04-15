@@ -197,12 +197,18 @@ class SignalModel:
             within_sec=cfg.POST_OBJECTIVE_KILL_WINDOW_SEC,
         )
 
+        # Late-game directional filter: don't buy the losing side in a decided game.
+        # If mid_a > 75¢, team A is winning — only buy_a. If mid_a < 25¢, only buy_b.
+        if mid_a > 0.75 and direction == "buy_b":
+            return None, f"WRONG_SIDE_a_winning_{mid_a:.3f}"
+        if mid_a < 0.25 and direction == "buy_a":
+            return None, f"WRONG_SIDE_b_winning_{mid_a:.3f}"
+
         late_game = mid_a > 0.75 or mid_a < 0.25
         if event.etype == EventType.KILL:
             if already_priced_lo:
                 if not (holding_direction == direction):
                     return None, f"PRICED_IN_KILL_mv={directional_move:.3f}"
-                # Allow adding while holding only on serious fight
                 if teamfight_kills < cfg.TEAMFIGHT_KILL_THRESHOLD:
                     return None, f"PRICED_HOLD_NEED_TF_mv={directional_move:.3f}"
 
@@ -225,10 +231,16 @@ class SignalModel:
         if edge_after_spread < cfg.MIN_EDGE:
             return None, f"LOW_EDGE_imp{impact:.3f}_spr{spread:.3f}_need{cfg.MIN_EDGE:.3f}"
 
-        size_usd = min(cfg.BET_SIZE_BASE * size_mult, cfg.MAX_SINGLE_BET)
-        # Small bump when multiple event types in combo window (real scrap)
-        if len(combo_types) >= 3 and event.etype == EventType.KILL:
-            size_usd = min(size_usd * 1.08, cfg.MAX_SINGLE_BET)
+        if event.etype == EventType.KILL:
+            if teamfight_kills >= 3:
+                size_usd = cfg.KILL_SIZE_3PLUS
+            elif teamfight_kills >= 2:
+                size_usd = cfg.KILL_SIZE_2
+            else:
+                size_usd = cfg.KILL_SIZE_1
+        else:
+            size_usd = cfg.BET_SIZE_BASE * size_mult
+        size_usd = min(size_usd, cfg.MAX_SINGLE_BET)
 
         reason_parts = [tier]
         if is_soul:
