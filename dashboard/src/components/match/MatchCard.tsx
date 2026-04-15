@@ -87,7 +87,7 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
     const c = createChart(el.current, {
       layout: { background: { color: 'transparent' }, textColor: '#555', fontSize: 9 },
       grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
-      rightPriceScale: { borderColor: 'transparent', scaleMargins: { top: 0.08, bottom: 0.12 } },
+      rightPriceScale: { borderColor: 'transparent', scaleMargins: { top: 0.05, bottom: 0.05 } },
       timeScale: { borderColor: 'transparent', timeVisible: true, secondsVisible: true },
       crosshair: {
         vertLine: { color: '#333', width: 1, style: 2, labelBackgroundColor: '#222' },
@@ -106,13 +106,13 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
       color: cB + '50', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: true,
       crosshairMarkerVisible: false,
       priceScaleId: 'teamB',
-      priceFormat: { type: 'custom', formatter: (p: number) => `${tBRef.current.split(' ')[0].slice(0,5)} ${(p*100).toFixed(1)}¢` },
+      priceFormat: { type: 'custom', formatter: (p: number) => (p * 100).toFixed(1) + '¢' },
     })
     c.priceScale('teamB').applyOptions({ visible: false })
     sA.current = c.addSeries(AreaSeries, {
       lineColor: cA, topColor: cA + '10', bottomColor: cA + '02', lineWidth: 2,
       lastValueVisible: true, priceLineVisible: false,
-      priceFormat: { type: 'custom', formatter: (p: number) => `${tARef.current.split(' ')[0].slice(0,5)} ${(p*100).toFixed(1)}¢` },
+      priceFormat: { type: 'custom', formatter: (p: number) => (p * 100).toFixed(1) + '¢' },
     })
     sMkA.current = createSeriesMarkers(sA.current, [])
     sMkB.current = createSeriesMarkers(sB.current, [])
@@ -519,7 +519,7 @@ export function MatchCard({ match, position }: { match: MatchData; position?: Po
 
         {/* ── Chart ── */}
         {(match.price_history.length > 0 || (match.match_events || []).length > 0) && (
-          <div className="h-44">
+          <div className="h-56">
             <Chart priceHistory={match.price_history} events={match.match_events || []}
               teamA={match.team_a} teamB={match.team_b} sideA={t1?.side||undefined} sideB={t2?.side||undefined} hoveredTs={hTs} />
           </div>
