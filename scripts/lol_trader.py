@@ -314,30 +314,52 @@ class LoLTrader:
     # ── LLF connection management (max 3) ─────────────────────────────
 
     def _start_llf_for_priority_matches(self):
-        """Connect LLF only to top 3 running matches that have Polymarket markets."""
-        priority = []
-        for m in self.matches.values():
-            if not m.active or not m.llf_url:
-                continue
-            has_mkt = bool(m.all_markets)
-            is_running = m.status == "running"
-            score = (2 if is_running and has_mkt else 1 if has_mkt else 0)
-            if score > 0:
-                priority.append((score, m.ps_match_id, m))
-        priority.sort(key=lambda x: -x[0])
+        """Connect LLF to top 3 matches by volume. Sticky: once a match receives
+        LLF data (game started), it keeps its slot until the match finishes."""
+        MAX_LLF = 3
 
-        target_ids = set()
-        for _, mid, m in priority[:3]:
+        # Sticky matches: already connected AND have received game data (llf_msg_count > 0)
+        sticky_ids: set[int] = set()
+        for mid, task in self._llf_tasks.items():
+            if task.done():
+                continue
+            m = self.matches.get(mid)
+            if m and m.active and m.llf_msg_count > 0:
+                sticky_ids.add(mid)
+
+        free_slots = MAX_LLF - len(sticky_ids)
+
+        candidates = []
+        for m in self.matches.values():
+            if m.ps_match_id in sticky_ids:
+                continue
+            if not m.active or not m.llf_url or not m.all_markets:
+                continue
+            vol = m.gamma.get("volume", 0) if m.gamma else 0
+            candidates.append((vol, m.ps_match_id, m))
+        candidates.sort(key=lambda x: -x[0])
+
+        target_ids = set(sticky_ids)
+        for _, mid, m in candidates[:max(free_slots, 0)]:
             target_ids.add(mid)
+
+        for mid in target_ids:
             if mid not in self._llf_tasks or self._llf_tasks[mid].done():
-                task = asyncio.create_task(self._llf_listener(m))
-                self._llf_tasks[mid] = task
-                log.info("LLF CONNECT: %s (priority)", m.name)
+                m = self.matches.get(mid)
+                if m:
+                    task = asyncio.create_task(self._llf_listener(m))
+                    self._llf_tasks[mid] = task
+                    vol = m.gamma.get("volume", 0) if m.gamma else 0
+                    log.info("LLF CONNECT: %s (vol=$%.0f%s)", m.name, vol,
+                             " STICKY" if mid in sticky_ids else "")
 
         for mid, task in list(self._llf_tasks.items()):
             if mid not in target_ids and not task.done():
+                m = self.matches.get(mid)
+                name = m.name if m else mid
                 task.cancel()
                 del self._llf_tasks[mid]
+                log.info("LLF DISCONNECT: %s (outprioritized)", name)
 
     # ── Match discovery (PandaScore) ────────────────────────────────────
 
@@ -1111,6 +1133,8 @@ class LoLTrader:
                 "team_b": m.team_b,
                 "team_a_id": m.team_a_id,
                 "team_b_id": m.team_b_id,
+                "volume": m.gamma.get("volume", 0) if m.gamma else 0,
+                "liquidity": m.gamma.get("liquidity", 0) if m.gamma else 0,
                 "has_market": bool(m.all_markets),
                 "market_question": m.market_question,
                 "active_market_type": m.active_market.market_type if m.active_market else "",
