@@ -6,9 +6,7 @@ import type { TraderState, PositionData } from '@/lib/types'
 import { fmtAge, fmtPnl } from '@/lib/format'
 
 function SellStatus({ p }: { p: PositionData }) {
-  if (p.sell_order_id) return <span className="text-amber-400">GTC pending</span>
-  if (p.age_sec >= 30) return <span className="text-orange-400">Awaiting exit</span>
-  return <span className="text-[#555]">Holding</span>
+  return <span className="text-blue-400">HOLD → resolve</span>
 }
 
 export function PositionsTable({ data }: { data?: TraderState }) {

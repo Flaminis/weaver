@@ -2,8 +2,7 @@
 All constants and thresholds for the LoL Polymarket trading bot.
 
 Entry: FAK buy (taker)
-Exit: GTC limit sell (maker) — no slippage, earn spread
-Fallback exit: FAK sell after timeout
+Exit: HOLD TO RESOLUTION — no active selling. Winning shares pay $1.00.
 """
 
 # ── Entry gates ─────────────────────────────────────────────────────────
@@ -19,12 +18,9 @@ NEAR_RESOLVED_FLOOR = 0.03      # Skip markets priced below 3c
 NEAR_RESOLVED_CEIL = 0.97       # Skip markets priced above 97c
 
 # ── Exit ────────────────────────────────────────────────────────────────
-
-HOLD_SECONDS = 30               # Auto-sell after 30s
-SELL_PRICE_OFFSET = 0.01        # Sell limit at mid or best_ask - tick (maker)
-SELL_TIMEOUT_SEC = 25           # If GTC not filled after 25s, cancel and FAK
-SELL_FAK_SLIPPAGE = 0.03        # Emergency FAK sell: 3c below bid
-MAX_SELL_RETRIES = 2            # Emergency sell retries with increasing aggression
+# Strategy: HOLD TO RESOLUTION. No active selling.
+# Polymarket redeems winning shares at $1.00, losing shares at $0.00.
+# Resolution detected via _check_finished_matches (price near 0/1 + PandaScore finished).
 
 # ── Sizing ──────────────────────────────────────────────────────────────
 

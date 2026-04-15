@@ -1063,173 +1063,34 @@ class LoLTrader:
             story.append(f"2) Exception before/while trading: {ev_record['order_error']}")
             ev_record["exec_story"] = "\n".join(story)
 
-    # ── Exit loop ───────────────────────────────────────────────────────
+    # ── Resolution loop (hold to resolution — no active selling) ───────
 
     async def _exit_loop(self):
+        """Hold all positions until market resolution. No GTC/FAK sells.
+        Polymarket redeems winning shares at $1.00 automatically.
+        Resolution is detected by _check_finished_matches → risk.resolve_position.
+        This loop just logs position status periodically for debugging.
+        """
         while self._running:
-            await asyncio.sleep(1)
-            now = time.time()
-
-            for pos in self.risk.open_positions:
-                age = now - pos.entry_time
-
-                if age < cfg.HOLD_SECONDS:
-                    continue
-
-                if pos.sell_order_id:
-                    await self._check_sell_fill(pos)
-                    continue
-
-                await self._place_exit(pos)
-
-    async def _place_exit(self, pos: Position):
-        match = self.matches.get(pos.match_id)
-        if not match:
-            return
-
-        book = self._get_book(match)
-        age = time.time() - pos.entry_time
-        pos.exit_story.append(f"1) Exit triggered at {age:.0f}s hold (threshold {cfg.HOLD_SECONDS}s).")
-
-        if self.dry_run:
-            exit_price = book.mid if book and book.has_book else pos.entry_price
-            pos.exit_story.append(f"2) DRY RUN — simulated sell @ {exit_price:.4f}.")
-            log.info("[DRY] SELL %s %.1f shares @ %.3f", pos.direction, pos.size, exit_price)
-            self.risk.record_exit(pos, exit_price, pos.size)
-            return
-
-        if book and book.has_book:
-            if pos.direction == "buy_a":
-                sell_price = book.best_ask - 0.01
-            else:
-                sell_price = round(1.0 - book.best_bid + 0.01, 2)
-            sell_price = max(sell_price, 0.01)
-            pos.exit_story.append(f"2) Book available: best_bid={book.best_bid:.4f} best_ask={book.best_ask:.4f} → GTC limit {sell_price:.4f}.")
-        else:
-            sell_price = max(pos.entry_price - 0.02, 0.01)
-            pos.exit_story.append(f"2) No book — fallback GTC limit {sell_price:.4f} (entry-2¢).")
-
-        try:
-            resp = await asyncio.get_event_loop().run_in_executor(
-                self._executor,
-                lambda: poly_client.sell_limit(pos.token_id, sell_price, pos.size, pos.neg_risk),
-            )
-            order_id = resp.get("orderID", "")
-            if order_id:
-                pos.sell_order_id = order_id
-                pos.sell_price = sell_price
-                pos.sell_time = time.time()
-                pos.exit_story.append(f"3) GTC sell placed: {order_id[:16]}… @ {sell_price:.4f} x {pos.size:.1f} shares.")
-                log.info("[EXIT] GTC sell placed: %s @ %.3f x %.1f",
-                         order_id[:16], sell_price, pos.size)
-            else:
-                pos.exit_story.append("3) GTC sell returned no orderID → emergency FAK.")
-                log.error("[EXIT] No orderID — forcing FAK sell")
-                await self._emergency_sell(pos)
-        except Exception as e:
-            pos.exit_story.append(f"3) GTC sell exception: {e} → emergency FAK.")
-            log.error("[EXIT] GTC sell failed: %s — forcing FAK", e)
-            await self._emergency_sell(pos)
-
-    async def _check_sell_fill(self, pos: Position):
-        age_since_sell = time.time() - (pos.sell_time or pos.entry_time + cfg.HOLD_SECONDS)
-
-        try:
-            order = await asyncio.get_event_loop().run_in_executor(
-                self._executor,
-                lambda: poly_client.check_sell_order(pos.sell_order_id),
-            )
-        except Exception:
-            order = None
-
-        if order:
-            status = order.get("status", "").lower()
-            if status == "matched" or status == "filled":
-                fill_price = float(order.get("price", pos.sell_price))
-                fill_size = float(order.get("size_matched", pos.size))
-                pos.exit_story.append(f"4) GTC sell filled: {fill_size:.1f} sh @ {fill_price:.4f} (status={status}).")
-                self.risk.record_exit(pos, fill_price, fill_size)
-                return
-            elif status in ("live", "open"):
-                if age_since_sell > cfg.SELL_TIMEOUT_SEC:
-                    pos.exit_story.append(f"4) GTC sell timed out after {age_since_sell:.0f}s (limit {cfg.SELL_TIMEOUT_SEC}s) — cancelling + FAK.")
-                    log.warning("[EXIT] GTC sell timed out after %.0fs — cancelling + FAK",
-                                age_since_sell)
-                    await asyncio.get_event_loop().run_in_executor(
-                        self._executor,
-                        lambda: poly_client.cancel_order(pos.sell_order_id),
-                    )
-                    pos.sell_order_id = ""
-                    await self._emergency_sell(pos)
-                return
-
-        if not order and pos.sell_order_id:
-            fills = await asyncio.get_event_loop().run_in_executor(
-                self._executor,
-                lambda: poly_client.get_trades(int(pos.entry_time)),
-            )
-            for f in fills:
-                if f.get("maker_order_id") == pos.sell_order_id or \
-                   f.get("taker_order_id") == pos.sell_order_id:
-                    fill_price = float(f.get("price", pos.sell_price))
-                    fill_size = float(f.get("size", pos.size))
-                    pos.exit_story.append(f"4) GTC order vanished but found in trades API: {fill_size:.1f} sh @ {fill_price:.4f}.")
-                    self.risk.record_exit(pos, fill_price, fill_size)
-                    return
-
-            pos.exit_story.append("4) GTC order vanished, no matching fill in trades — emergency FAK.")
-            log.warning("[EXIT] GTC order vanished — emergency sell")
-            pos.sell_order_id = ""
-            await self._emergency_sell(pos)
-
-    async def _emergency_sell(self, pos: Position):
-        match = self.matches.get(pos.match_id)
-        book = self._get_book(match) if match else None
-        step = len(pos.exit_story) + 1
-
-        pos.exit_story.append(f"{step}) Emergency FAK sell — {cfg.MAX_SELL_RETRIES + 1} attempts max.")
-
-        for attempt in range(cfg.MAX_SELL_RETRIES + 1):
-            if book and book.has_book:
-                price = book.best_bid - (cfg.SELL_FAK_SLIPPAGE * (attempt + 1))
-                if pos.direction == "buy_b":
-                    price = round(1.0 - book.best_ask - (cfg.SELL_FAK_SLIPPAGE * (attempt + 1)), 2)
-            else:
-                price = max(pos.entry_price - 0.05 * (attempt + 1), 0.01)
-
-            price = max(price, 0.01)
-
-            try:
-                log.info("[EXIT] FAK sell attempt %d/%d @ %.3f", attempt + 1, cfg.MAX_SELL_RETRIES + 1, price)
-                resp = await asyncio.get_event_loop().run_in_executor(
-                    self._executor,
-                    lambda p=price: poly_client.sell_fak(pos.token_id, p, pos.size, pos.neg_risk),
-                )
-                order_id = resp.get("orderID", "")
-                if order_id:
-                    await asyncio.sleep(2)
-                    fill = await asyncio.get_event_loop().run_in_executor(
-                        self._executor,
-                        lambda: poly_client.verify_buy_fill(order_id, int(time.time()) - 5),
-                    )
-                    if fill:
-                        fill_price = float(fill.get("price", price))
-                        pos.exit_story.append(f"  FAK attempt {attempt + 1} filled @ {fill_price:.4f}.")
-                        self.risk.record_exit(pos, fill_price, pos.size)
-                        return
-                    else:
-                        pos.exit_story.append(f"  FAK attempt {attempt + 1} @ {price:.4f}: order sent ({order_id[:12]}…) but no fill confirmed.")
+            await asyncio.sleep(10)
+            open_pos = self.risk.open_positions
+            if not open_pos:
+                continue
+            for pos in open_pos:
+                match = self.matches.get(pos.match_id)
+                book = self._get_book(match) if match else None
+                current = book.mid if book and book.has_book else 0
+                age = time.time() - pos.entry_time
+                if pos.direction == "buy_a":
+                    unrealized = (current - pos.entry_price) * pos.size if current > 0 else 0
                 else:
-                    pos.exit_story.append(f"  FAK attempt {attempt + 1} @ {price:.4f}: no order ID returned.")
-            except Exception as e:
-                pos.exit_story.append(f"  FAK attempt {attempt + 1} @ {price:.4f}: exception {e}.")
-                log.error("[EXIT] FAK sell attempt %d failed: %s", attempt + 1, e)
-
-            await asyncio.sleep(1)
-
-        pos.exit_story.append(f"ALL {cfg.MAX_SELL_RETRIES + 1} FAK ATTEMPTS FAILED — force-closing at 95% of entry.")
-        log.error("[EXIT] ALL SELL ATTEMPTS FAILED for %s — position stuck", pos.match_name)
-        self.risk.record_exit(pos, pos.entry_price * 0.95, pos.size)
+                    unrealized = ((1 - current) - pos.entry_price) * pos.size if current > 0 else 0
+                if not pos.exit_story:
+                    pos.exit_story.append("Strategy: HOLD TO RESOLUTION — no active sell orders.")
+                if age > 60 and int(age) % 60 < 10:
+                    log.info("[HOLD] %s %s %.1f sh @ %.3f → now %.3f (unreal $%.2f, %ds)",
+                             pos.direction, pos.match_name, pos.size,
+                             pos.entry_price, current, unrealized, int(age))
 
 
     # ── Dashboard API ──────────────────────────────────────────────────

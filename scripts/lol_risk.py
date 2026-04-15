@@ -195,8 +195,38 @@ class RiskManager:
         pos.closed = True
         self._daily_pnl += pos.exit_pnl
         self.capital += pos.exit_pnl
-        log.info("POSITION RESOLVED: %s %s pnl=$%.2f (price=%.2f)",
-                 pos.direction, pos.match_name, pos.exit_pnl, resolved_price)
+
+        pos.exit_story.append(
+            f"RESOLVED @ ${resolved_price:.2f} — "
+            f"{'WIN' if pos.exit_pnl > 0 else 'LOSS'} "
+            f"${pos.exit_pnl:+.2f} (held {pos.sell_time - pos.entry_time:.0f}s)"
+        )
+
+        rec = TradeRecord(
+            ts=time.time(),
+            match_name=pos.match_name,
+            direction=pos.direction,
+            entry_price=pos.entry_price,
+            exit_price=resolved_price,
+            size=pos.size,
+            pnl=pos.exit_pnl,
+            hold_sec=pos.sell_time - pos.entry_time,
+            reason=f"RESOLVED_{resolved_price:.0f}",
+        )
+        self.trades.append(rec)
+
+        if pos.exit_pnl < 0:
+            self._consecutive_losses += 1
+            if self._consecutive_losses >= cfg.MAX_CONSECUTIVE_LOSSES:
+                self._trigger_circuit_breaker(
+                    f"{self._consecutive_losses} consecutive losses")
+        else:
+            self._consecutive_losses = 0
+
+        emoji = "+" if pos.exit_pnl >= 0 else ""
+        log.info("POSITION RESOLVED: %s %s entry=%.3f resolved=%.2f pnl=%s$%.2f held=%.0fs",
+                 pos.direction, pos.match_name, pos.entry_price, resolved_price,
+                 emoji, pos.exit_pnl, pos.sell_time - pos.entry_time)
 
     # ── Session report ──────────────────────────────────────────────────
 
