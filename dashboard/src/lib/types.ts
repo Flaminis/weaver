@@ -163,6 +163,12 @@ export interface PolyWsHealth {
   last_msg_age: number
 }
 
+export interface LlfWsHealth {
+  active: number
+  max: number
+  matches: string[]
+}
+
 export interface TraderState {
   ts: number
   dry_run: boolean
@@ -177,8 +183,8 @@ export interface TraderState {
   circuit_seconds_left: number
   circuit_reason: string
   consecutive_losses: number
-  // kept for API compat — always false/0/"" now that circuit breaker is removed
   poly_ws: PolyWsHealth
+  llf_ws: LlfWsHealth
   matches: Record<string, MatchData>
   positions: PositionData[]
   trades: TradeData[]

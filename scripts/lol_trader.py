@@ -672,10 +672,12 @@ class LoLTrader:
     async def _llf_listener(self, match: LiveMatch):
         url = f"{match.llf_url}?token={PS_KEY}"
         tag = f"[LLF {match.name}]"
+        ws = None
 
-        while self._running:
-            try:
-                async with websockets.connect(url, ping_interval=20, ping_timeout=30) as ws:
+        try:
+            while self._running:
+                try:
+                    ws = await websockets.connect(url, ping_interval=20, ping_timeout=30)
                     log.info("%s Connected", tag)
                     match.llf_status = "connected"
                     while self._running:
@@ -721,25 +723,36 @@ class LoLTrader:
                             for g in games:
                                 await self._process_game_update(match, g)
 
-            except websockets.exceptions.ConnectionClosed as e:
-                code = getattr(e, "code", 0) or 0
-                reason = str(e).lower()
-                if code == 1000 or "finished" in reason or "closing" in reason:
-                    match.llf_status = "ended"
-                    log.info("%s Match ended", tag)
-                    return
-                elif code == 4004 or "unavailable" in reason:
-                    match.llf_status = f"not_open(retry {cfg.LLF_NOT_OPEN_DELAY}s)"
-                    log.info("%s LLF not open — retrying %ds", tag, cfg.LLF_NOT_OPEN_DELAY)
-                    await asyncio.sleep(cfg.LLF_NOT_OPEN_DELAY)
-                else:
-                    match.llf_status = f"closed({code})"
-                    log.warning("%s Closed (%d) — retrying %ds", tag, code, cfg.LLF_RECONNECT_DELAY)
-                    await asyncio.sleep(cfg.LLF_RECONNECT_DELAY)
-            except Exception as e:
-                match.llf_status = f"error:{type(e).__name__}"
-                log.warning("%s Error: %s — retrying 10s", tag, e)
-                await asyncio.sleep(10)
+                except websockets.exceptions.ConnectionClosed as e:
+                    code = getattr(e, "code", 0) or 0
+                    reason = str(e).lower()
+                    if code == 1000 or "finished" in reason or "closing" in reason:
+                        match.llf_status = "ended"
+                        log.info("%s Match ended", tag)
+                        return
+                    elif code == 4004 or "unavailable" in reason:
+                        match.llf_status = f"not_open(retry {cfg.LLF_NOT_OPEN_DELAY}s)"
+                        log.info("%s LLF not open — retrying %ds", tag, cfg.LLF_NOT_OPEN_DELAY)
+                        await asyncio.sleep(cfg.LLF_NOT_OPEN_DELAY)
+                    else:
+                        match.llf_status = f"closed({code})"
+                        log.warning("%s Closed (%d) — retrying %ds", tag, code, cfg.LLF_RECONNECT_DELAY)
+                        await asyncio.sleep(cfg.LLF_RECONNECT_DELAY)
+                except Exception as e:
+                    match.llf_status = f"error:{type(e).__name__}"
+                    log.warning("%s Error: %s — retrying 10s", tag, e)
+                    await asyncio.sleep(10)
+                finally:
+                    if ws and not ws.closed:
+                        await ws.close()
+                        ws = None
+        except asyncio.CancelledError:
+            match.llf_status = "cancelled"
+            log.info("%s Cancelled — closing WS", tag)
+        finally:
+            if ws and not ws.closed:
+                await ws.close()
+                log.info("%s WS closed", tag)
 
     # ── Game state diffing ──────────────────────────────────────────────
 
@@ -1232,6 +1245,15 @@ class LoLTrader:
             "circuit_reason": "",
             "consecutive_losses": 0,
             "poly_ws": self.ws_prices.health(),
+            "llf_ws": {
+                "active": sum(1 for t in self._llf_tasks.values() if not t.done()),
+                "max": 3,
+                "matches": [
+                    self.matches[mid].name
+                    for mid in self._llf_tasks
+                    if not self._llf_tasks[mid].done() and mid in self.matches
+                ],
+            },
             "matches": matches,
             "positions": positions,
             "trades": trades,

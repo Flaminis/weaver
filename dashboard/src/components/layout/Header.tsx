@@ -34,6 +34,18 @@ export function Header({ data }: { data?: TraderState }) {
                 <span className="text-[#555] ml-0.5">{data.poly_ws.active_books}/{data.poly_ws.subscriptions}</span>
               </span>
             )}
+            {data.llf_ws && (
+              <span
+                className={`text-[8px] font-mono px-1.5 py-0.5 rounded ${
+                  data.llf_ws.active > 0
+                    ? 'bg-blue-500/15 text-blue-400'
+                    : 'bg-red-500/15 text-red-400'
+                }`}
+                title={`PandaScore LLF: ${data.llf_ws.active}/${data.llf_ws.max} slots\n${data.llf_ws.matches.join('\n') || 'none connected'}`}
+              >
+                LLF:{data.llf_ws.active}/{data.llf_ws.max}
+              </span>
+            )}
           </>
         )}
       </div>
