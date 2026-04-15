@@ -185,9 +185,6 @@ class SignalModel:
             directional_move = recent_move_2s
         else:
             directional_move = -recent_move_2s
-        already_priced_lo = directional_move > cfg.PRICED_IN_THRESHOLD
-        already_priced_hi = directional_move > cfg.PRICED_IN_THRESHOLD * 1.6
-
         teamfight_kills = self.combo.recent_kills(event.team_id, cfg.TEAMFIGHT_WINDOW_SEC)
         combo_types = {e.etype for e in self.combo.recent_events(event.team_id)}
         post_obj = self.combo.had_objective_since(
@@ -196,12 +193,17 @@ class SignalModel:
             within_sec=cfg.POST_OBJECTIVE_KILL_WINDOW_SEC,
         )
 
+        # Priced-in threshold scales with stacked kills — kill #2 allows 2x the move
+        priced_in_limit = cfg.PRICED_IN_THRESHOLD * max(teamfight_kills, 1)
+        already_priced_lo = directional_move > priced_in_limit
+        already_priced_hi = directional_move > priced_in_limit * 1.6
+
         late_game = mid_a > 0.75 or mid_a < 0.25
 
         if event.etype == EventType.KILL:
             if already_priced_lo:
                 if not (holding_direction == direction):
-                    return None, f"PRICED_IN_KILL_mv={directional_move:.3f}"
+                    return None, f"PRICED_IN_KILL_mv={directional_move:.3f}_lim={priced_in_limit:.3f}_stk={teamfight_kills}"
 
         if event.etype in (EventType.BARON, EventType.INHIBITOR, EventType.DRAKE):
             if already_priced_hi:
