@@ -197,14 +197,17 @@ class SignalModel:
             within_sec=cfg.POST_OBJECTIVE_KILL_WINDOW_SEC,
         )
 
-        # Late-game directional filter: don't buy the losing side in a decided game.
-        # If mid_a > 75¢, team A is winning — only buy_a. If mid_a < 25¢, only buy_b.
-        if mid_a > 0.75 and direction == "buy_b":
-            return None, f"WRONG_SIDE_a_winning_{mid_a:.3f}"
-        if mid_a < 0.25 and direction == "buy_a":
-            return None, f"WRONG_SIDE_b_winning_{mid_a:.3f}"
-
         late_game = mid_a > 0.75 or mid_a < 0.25
+
+        # Underdog filter: buying the losing side in a decided game needs strong evidence.
+        # Single kills by the losing team are noise. Baron/inhib/teamfight = real comeback signal.
+        buying_underdog = (mid_a > 0.75 and direction == "buy_b") or \
+                          (mid_a < 0.25 and direction == "buy_a")
+        if buying_underdog:
+            is_major_objective = event.etype in (EventType.BARON, EventType.INHIBITOR)
+            is_teamfight = event.etype == EventType.KILL and teamfight_kills >= 3
+            if not (is_major_objective or is_teamfight):
+                return None, f"UNDERDOG_WEAK_sig_{event.etype.value}_stk{teamfight_kills}_mid{mid_a:.3f}"
         if event.etype == EventType.KILL:
             if already_priced_lo:
                 if not (holding_direction == direction):
