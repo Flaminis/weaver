@@ -58,7 +58,6 @@ class RiskManager:
         self.trades: list[TradeRecord] = []
         self._token_cooldowns: dict[str, float] = {}
         self._match_cooldowns: dict[int, float] = {}
-        self._loss_cooldown_until: float = 0.0
         self._consecutive_losses: int = 0
         self._circuit_breaker_until: float = 0.0
         self._session_start = time.time()
@@ -123,10 +122,6 @@ class RiskManager:
         if self.circuit_active:
             return False, "CIRCUIT_BREAKER"
 
-        if now < self._loss_cooldown_until:
-            remaining = self._loss_cooldown_until - now
-            return False, f"LOSS_COOLDOWN_{remaining:.0f}s"
-
         cd = self._token_cooldowns.get(token_id, 0)
         if now < cd:
             return False, f"TOKEN_COOLDOWN_{cd - now:.0f}s"
@@ -180,7 +175,6 @@ class RiskManager:
 
         if pos.exit_pnl < 0:
             self._consecutive_losses += 1
-            self._loss_cooldown_until = time.time() + cfg.LOSS_COOLDOWN_SEC
             if self._consecutive_losses >= cfg.MAX_CONSECUTIVE_LOSSES:
                 self._trigger_circuit_breaker(
                     f"{self._consecutive_losses} consecutive losses")

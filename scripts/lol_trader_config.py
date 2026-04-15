@@ -35,7 +35,6 @@ MAX_TOTAL_EXPOSURE = 100.0      # $100 max across all open positions
 # ── Cooldowns ───────────────────────────────────────────────────────────
 
 TOKEN_COOLDOWN_SEC = 30         # Don't re-enter same token for 30s
-LOSS_COOLDOWN_SEC = 60          # Cool off 60s after a losing trade
 MATCH_COOLDOWN_SEC = 5          # Min 5s between trades on same match
 
 # ── Circuit breaker ─────────────────────────────────────────────────────
