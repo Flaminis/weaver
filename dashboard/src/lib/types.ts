@@ -156,6 +156,13 @@ export interface EventData {
   }
 }
 
+export interface PolyWsHealth {
+  connected: boolean
+  subscriptions: number
+  active_books: number
+  last_msg_age: number
+}
+
 export interface TraderState {
   ts: number
   dry_run: boolean
@@ -170,6 +177,7 @@ export interface TraderState {
   circuit_seconds_left: number
   circuit_reason: string
   consecutive_losses: number
+  poly_ws: PolyWsHealth
   matches: Record<string, MatchData>
   positions: PositionData[]
   trades: TradeData[]

@@ -1346,6 +1346,7 @@ class LoLTrader:
             "circuit_seconds_left": round(self.risk.circuit_seconds_left, 0),
             "circuit_reason": self.risk.circuit_reason,
             "consecutive_losses": self.risk._consecutive_losses,
+            "poly_ws": self.ws_prices.health(),
             "matches": matches,
             "positions": positions,
             "trades": trades,

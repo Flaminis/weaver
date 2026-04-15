@@ -133,6 +133,18 @@ class MarketWebSocket:
     def get_book(self, token_id: str) -> Optional[BookState]:
         return self._subscribed.get(token_id)
 
+    def health(self) -> dict:
+        now = time.time()
+        connected = self._ws is not None
+        last_age = round(now - self._last_msg_at, 1) if self._last_msg_at > 0 else -1
+        active_books = sum(1 for b in self._subscribed.values() if b.has_book)
+        return {
+            "connected": connected,
+            "subscriptions": len(self._subscribed),
+            "active_books": active_books,
+            "last_msg_age": last_age,
+        }
+
     def subscribe(self, token_id: str):
         if token_id in self._subscribed:
             return

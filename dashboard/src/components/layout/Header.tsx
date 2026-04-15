@@ -34,6 +34,22 @@ export function Header({ data }: { data?: TraderState }) {
             )}
             <Separator orientation="vertical" className="h-4" />
             <span className="text-[10px] text-muted-foreground">{fmtTime(data.uptime_sec)}</span>
+            {data.poly_ws && (
+              <span
+                className={`text-[8px] font-mono px-1.5 py-0.5 rounded ${
+                  data.poly_ws.connected && data.poly_ws.last_msg_age >= 0 && data.poly_ws.last_msg_age < 10
+                    ? 'bg-green-500/15 text-green-400'
+                    : data.poly_ws.connected && data.poly_ws.last_msg_age < 30
+                      ? 'bg-yellow-500/15 text-yellow-400'
+                      : 'bg-red-500/15 text-red-400'
+                }`}
+                title={`Polymarket WS: ${data.poly_ws.connected ? 'connected' : 'disconnected'} | ${data.poly_ws.active_books}/${data.poly_ws.subscriptions} books active | last msg ${data.poly_ws.last_msg_age >= 0 ? data.poly_ws.last_msg_age.toFixed(0) + 's ago' : 'never'}`}
+              >
+                WS:{data.poly_ws.connected ? 'OK' : 'DOWN'}
+                {data.poly_ws.last_msg_age >= 0 && <span className="text-[#555] ml-0.5">{data.poly_ws.last_msg_age.toFixed(0)}s</span>}
+                <span className="text-[#555] ml-0.5">{data.poly_ws.active_books}/{data.poly_ws.subscriptions}</span>
+              </span>
+            )}
           </>
         )}
       </div>
