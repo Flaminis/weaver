@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoL Live Dashboard</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#c9d1d9;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#161b22;border-bottom:1px solid #30363d;flex-shrink:0}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.logo{font-size:12px;font-weight:700;color:#58a6ff;letter-spacing:.5px}
+.mi{font-size:12px;color:#8b949e}
+.ss{font-size:20px;font-weight:700;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.sc-a{color:#58a6ff}.sc-b{color:#f85149}.sc-d{color:#484f58;font-weight:400}
+.hdr-r{display:flex;align-items:center;gap:5px;font-size:11px;color:#8b949e}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.on{background:#3fb950}.dot.off{background:#f85149}
+
+.sub{display:flex;align-items:center;justify-content:center;gap:14px;padding:5px 16px;background:#161b22;border-bottom:1px solid #30363d;font-size:11px;color:#8b949e;flex-shrink:0}
+.badge{padding:1px 7px;border-radius:4px;font-weight:600;font-size:9px;text-transform:uppercase}
+.badge.live{background:rgba(248,81,73,.15);color:#f85149}
+.badge.done{background:rgba(63,185,80,.15);color:#3fb950}
+.tmr{font-size:16px;font-weight:700;color:#e6edf3;font-variant-numeric:tabular-nums}
+
+/* Layout: chart FULL WIDTH on top, panel + events below */
+.main{display:grid;grid-template-columns:1fr 240px;grid-template-rows:1fr auto;flex:1;min-height:0}
+.chart-wrap{grid-column:1/3;grid-row:1;position:relative;min-height:0;overflow:hidden}
+#chart{width:100%;height:100%}
+.gp{grid-column:2;grid-row:2;background:#161b22;border-left:1px solid #30363d;border-top:1px solid #30363d;overflow-y:auto;padding:10px 12px;min-width:0;max-height:220px}
+.ep{grid-column:1;grid-row:2;background:#0d1117;border-top:1px solid #30363d;overflow-y:auto;padding:6px 14px;font-family:'SF Mono','Fira Code','Menlo',monospace;font-size:11px;max-height:220px}
+
+/* Game panel */
+.pbox{text-align:center;padding:8px 0 10px;border-bottom:1px solid #21262d;margin-bottom:8px}
+.pbig{font-size:26px;font-weight:700;color:#e6edf3;font-variant-numeric:tabular-nums}
+.psub{font-size:9px;color:#484f58;margin-top:2px}
+.sec{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#484f58;font-weight:600;margin:8px 0 4px}
+.tb{margin-bottom:10px}
+.th{display:flex;align-items:center;gap:5px;margin-bottom:4px;font-weight:600;font-size:11px}
+.sb{padding:1px 4px;border-radius:3px;font-size:8px;font-weight:700;text-transform:uppercase}
+.sb.blue{background:rgba(88,166,255,.15);color:#58a6ff}
+.sb.red{background:rgba(248,81,73,.15);color:#f85149}
+.sr{display:flex;justify-content:space-between;padding:1px 0;font-size:10px;color:#8b949e;font-variant-numeric:tabular-nums}
+.sr .v{font-weight:600;color:#c9d1d9}.sr .v.up{color:#3fb950}
+.dr{display:flex;justify-content:space-between;padding:1px 0;font-size:9px}
+.dr .rl{color:#58a6ff;font-weight:600;width:24px}.dr .ch{color:#6e7681}
+.dsep{border-top:1px solid #21262d;margin-top:4px;padding-top:4px}
+
+/* Event log */
+.er{display:flex;gap:8px;padding:2px 0;animation:flash .8s ease-out}
+.er .t{color:#484f58;flex-shrink:0}.er .et{font-weight:700;width:42px;flex-shrink:0}
+.er .et.KILL{color:#f85149}.er .et.TOWER{color:#58a6ff}.er .et.DRAKE{color:#bc8cff}
+.er .et.BARON{color:#d29922}.er .et.INHIB{color:#f85149}.er .et.STATE{color:#3fb950}
+.er .eg{color:#484f58;flex-shrink:0}.er .ed{color:#8b949e}
+@keyframes flash{0%{background:rgba(88,166,255,.12)}100%{background:transparent}}
+.nd{color:#484f58;font-size:11px;padding:8px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-l">
+    <span class="logo">● LoL Live</span>
+    <span class="mi" id="mi">Connecting...</span>
+  </div>
+  <div class="ss" id="ss"></div>
+  <div class="hdr-r">
+    <span class="dot off" id="dot"></span>
+    <span id="stxt">Disconnected</span>
+  </div>
+</div>
+<div class="sub" id="sub"><span>—</span></div>
+
+<div class="main">
+  <div class="chart-wrap"><div id="chart"></div></div>
+  <div class="gp" id="gp">
+    <div class="pbox"><div class="pbig" id="pmid">—</div><div class="psub" id="psub">—</div></div>
+    <div id="nodata" class="nd">Waiting for data...</div>
+    <div id="gc" style="display:none"></div>
+  </div>
+  <div class="ep" id="ep"><div class="nd">Waiting for events...</div></div>
+</div>
+
+<script>
+const WS_URL = `ws://${location.hostname}:8765`;
+let ws, chart, midS, bidS, askS, evtS;
+let markers = [];
+let lastChartTime = 0;
+let S = { games: [], team_names: {}, team_acrs: {}, series_score: {} };
+
+function initChart() {
+  const el = document.getElementById('chart');
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { type: 'solid', color: '#0d1117' }, textColor: '#8b949e',
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', fontSize: 11 },
+    grid: { vertLines: { color: '#161b22' }, horzLines: { color: '#161b22' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine: { color: '#484f58', width: 1, style: 2, labelBackgroundColor: '#30363d' },
+      horzLine: { color: '#484f58', width: 1, style: 2, labelBackgroundColor: '#30363d' } },
+    rightPriceScale: { borderColor: '#21262d', scaleMargins: { top: 0.06, bottom: 0.12 },
+      entireTextOnly: true },
+    timeScale: { borderColor: '#21262d', timeVisible: true, secondsVisible: false },
+    localization: { priceFormatter: p => (p * 100).toFixed(1) + '¢' },
+    handleScroll: { vertTouchDrag: false },
+  });
+
+  bidS = chart.addLineSeries({ color: 'rgba(63,185,80,0.2)', lineWidth: 1, lineStyle: 2,
+    priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  askS = chart.addLineSeries({ color: 'rgba(248,81,73,0.2)', lineWidth: 1, lineStyle: 2,
+    priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  midS = chart.addAreaSeries({ lineColor: '#58a6ff', topColor: 'rgba(88,166,255,0.08)',
+    bottomColor: 'rgba(88,166,255,0.01)', lineWidth: 2,
+    priceFormat: { type: 'custom', formatter: p => (p*100).toFixed(1)+'¢' },
+    crosshairMarkerBackgroundColor: '#58a6ff', crosshairMarkerRadius: 4 });
+
+  evtS = chart.addHistogramSeries({
+    priceScaleId: 'events',
+    priceFormat: { type: 'custom', formatter: () => '' },
+    lastValueVisible: false,
+    priceLineVisible: false,
+  });
+  chart.priceScale('events').applyOptions({
+    scaleMargins: { top: 0.92, bottom: 0 },
+    visible: false,
+  });
+
+  new ResizeObserver(() => {
+    chart.applyOptions({ width: el.clientWidth, height: el.clientHeight });
+  }).observe(el);
+}
+
+function safeTime(ts) {
+  let t = Math.floor(ts);
+  if (t <= lastChartTime) t = lastChartTime + 1;
+  lastChartTime = t;
+  return t;
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => setStatus(true);
+  ws.onclose = () => { setStatus(false); setTimeout(connect, 3000); };
+  ws.onerror = () => {};
+  ws.onmessage = e => handle(JSON.parse(e.data));
+}
+
+function setStatus(on) {
+  document.getElementById('dot').className = 'dot ' + (on ? 'on' : 'off');
+  document.getElementById('stxt').textContent = on ? 'Connected' : 'Reconnecting...';
+}
+
+function handle(msg) {
+  if (msg.type === 'init') onInit(msg);
+  else if (msg.type === 'game') onGame(msg);
+  else if (msg.type === 'price') onPrice(msg);
+  else if (msg.type === 'event') onEvent(msg);
+}
+
+function onInit(d) {
+  Object.assign(S, d);
+  document.getElementById('mi').textContent = `${d.match_name} • ${d.league}`;
+  updateScore();
+  if (d.primary_label) {
+    document.getElementById('sub').innerHTML =
+      `<span style="color:#6e7681;font-size:10px">${d.primary_label}</span>`;
+  }
+  if (d.price_history && d.price_history.length) {
+    lastChartTime = 0;
+    const md=[], bd=[], ad=[];
+    for (const p of d.price_history) {
+      const t = safeTime(p.ts);
+      md.push({time:t, value:p.mid});
+      bd.push({time:t, value:p.bid});
+      ad.push({time:t, value:p.ask});
+    }
+    midS.setData(md); bidS.setData(bd); askS.setData(ad);
+    updatePriceBox(d.price_history[d.price_history.length-1]);
+  }
+  if (d.events) {
+    const evtData = [];
+    d.events.forEach(ev => {
+      addEventRow(ev);
+      evtData.push({ time: Math.floor(ev.ts), value: 1, color: evColor(ev.etype) });
+      markers.push(mkMarker(ev));
+    });
+    if (evtData.length) evtS.setData(dedupByTime(evtData));
+    if (markers.length) midS.setMarkers(markers.sort((a,b) => a.time - b.time));
+  }
+  if (d.games && d.games.length) updateGamePanel(d.games);
+}
+
+function onGame(d) {
+  S.games = d.games;
+  if (d.series_score) S.series_score = d.series_score;
+  updateScore();
+  updateGamePanel(d.games);
+}
+
+function onPrice(d) {
+  const t = safeTime(d.ts);
+  midS.update({time:t, value:d.mid});
+  bidS.update({time:t, value:d.bid});
+  askS.update({time:t, value:d.ask});
+  updatePriceBox(d);
+}
+
+function onEvent(d) {
+  addEventRow(d);
+  const t = Math.floor(d.ts);
+  evtS.update({ time: t, value: 1, color: evColor(d.etype) });
+  markers.push(mkMarker(d));
+  if (markers.length > 80) markers = markers.slice(-80);
+  try { midS.setMarkers(markers.sort((a,b) => a.time - b.time)); } catch(e) {}
+}
+
+function mkMarker(ev) {
+  const team = ev.desc ? ev.desc.split(' ')[0] : '?';
+  const labels = { KILL:'K', TOWER:'T', DRAKE:'D', BARON:'B', INHIB:'I', STATE:'S' };
+  const lbl = labels[ev.etype] || ev.etype[0];
+  return {
+    time: Math.floor(ev.ts),
+    position: 'aboveBar',
+    color: evColor(ev.etype),
+    shape: 'circle',
+    text: `${lbl} ${team}`,
+  };
+}
+
+function dedupByTime(arr) {
+  const seen = new Set();
+  return arr.filter(d => { if (seen.has(d.time)) return false; seen.add(d.time); return true; });
+}
+
+function evColor(t) {
+  return {KILL:'#f85149',TOWER:'#58a6ff',DRAKE:'#bc8cff',BARON:'#d29922',INHIB:'#f85149',STATE:'#3fb950'}[t]||'#8b949e';
+}
+
+function updateScore() {
+  const ids = Object.keys(S.series_score);
+  if (ids.length >= 2) {
+    const a = S.team_acrs[ids[0]]||'?', b = S.team_acrs[ids[1]]||'?';
+    const s1 = S.series_score[ids[0]]||0, s2 = S.series_score[ids[1]]||0;
+    document.getElementById('ss').innerHTML =
+      `<span class="sc-a">${a}</span><span class="sc-d"> ${s1} — ${s2} </span><span class="sc-b">${b}</span>`;
+  }
+}
+
+function updatePriceBox(tick) {
+  if (!tick||!tick.mid) return;
+  document.getElementById('pmid').textContent = (tick.mid*100).toFixed(1)+'¢';
+  const sp = ((tick.ask-tick.bid)*100).toFixed(1);
+  document.getElementById('psub').textContent =
+    `B ${(tick.bid*100).toFixed(1)} / A ${(tick.ask*100).toFixed(1)} • Sprd ${sp}¢`;
+}
+
+function updateGamePanel(games) {
+  let g = games.find(g => g.status==='running');
+  if (!g) g = [...games].reverse().find(g => g.status==='finished');
+  if (!g) g = games[0];
+  const teams = g.teams||[];
+  if (teams.length<2) return;
+
+  document.getElementById('nodata').style.display = 'none';
+  const gc = document.getElementById('gc');
+  gc.style.display = 'block';
+
+  const t1=teams[0], t2=teams[1];
+  const tn = id => S.team_names[String(id)]||S.team_acrs[String(id)]||`T${id}`;
+
+  let clk='--:--';
+  if (g.timer) {
+    let b = g.timer.timer||0;
+    if (!g.timer.paused && g.timer.issued_at)
+      b += (Date.now()-new Date(g.timer.issued_at).getTime())/1000;
+    const s = Math.max(0,Math.floor(b));
+    clk = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  }
+  const bdg = g.status==='running'
+    ? '<span class="badge live">● LIVE</span>'
+    : g.status==='finished' ? '<span class="badge done">✓</span>' : '';
+  document.getElementById('sub').innerHTML =
+    `<span>GAME ${g.position}</span>${bdg}<span class="tmr">${clk}</span>`;
+
+  const stats=[['Kills','kills'],['Towers','towers'],['Drakes','drakes'],['Baron','nashors'],['Inhibs','inhibitors']];
+  const draft = g.draft?.picks||[];
+  const roles = ['top','jun','mid','adc','sup'];
+  const p1={}, p2={};
+  draft.forEach(p=>{if(p.team_id===t1.id)p1[p.role]=p.champion_slug;if(p.team_id===t2.id)p2[p.role]=p.champion_slug;});
+
+  let h = '';
+  for (const [ti,idx,pks] of [[t1,0,p1],[t2,1,p2]]) {
+    const side=(ti.side||'?').toUpperCase();
+    const sc = side==='BLUE'?'blue':'red';
+    h += `<div class="tb"><div class="th"><span class="sb ${sc}">${side}</span><span>${tn(ti.id)}</span></div>`;
+    for (const [lb,key] of stats) {
+      const v=ti[key]||0, oth=(idx===0?t2:t1)[key]||0;
+      h += `<div class="sr"><span>${lb}</span><span class="v${v>oth?' up':''}">${v}</span></div>`;
+    }
+    if (Object.keys(pks).length) {
+      h += '<div class="dsep">';
+      for (const r of roles)
+        h += `<div class="dr"><span class="rl">${r.toUpperCase()}</span><span class="ch">${pks[r]||'—'}</span></div>`;
+      h += '</div>';
+    }
+    h += '</div>';
+  }
+  gc.innerHTML = h;
+}
+
+function addEventRow(ev) {
+  const ep = document.getElementById('ep');
+  const nd = ep.querySelector('.nd');
+  if (nd) nd.remove();
+  const d = document.createElement('div');
+  d.className = 'er';
+  d.innerHTML = `<span class="t">${ev.time}</span><span class="et ${ev.etype}">${ev.etype}</span><span class="eg">G${ev.game} [${ev.clock}]</span><span class="ed">${ev.desc}</span>`;
+  ep.appendChild(d);
+  ep.scrollTop = ep.scrollHeight;
+}
+
+setInterval(() => {
+  if (S.games) {
+    const a = S.games.find(g => g.status==='running');
+    if (a && a.timer && !a.timer.paused) updateGamePanel(S.games);
+  }
+}, 1000);
+
+initChart();
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Python
+.venv/
+.venv311/
+__pycache__/
+*.pyc
+*.pyo
+
+# Env
+.env
+
+# Node
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+
+# Logs
+scripts/logs/
+logs/
+
+# IDE
+.cursor/
+.vscode/
+
+# OS
+.DS_Store
+*.swp
+
+# Data
+*.parquet
+*.joblib
