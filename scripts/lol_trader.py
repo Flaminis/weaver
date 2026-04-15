@@ -217,8 +217,8 @@ class LoLTrader:
         log.info("="*60)
         log.info("  LoL Polymarket Trader%s", " (DRY RUN)" if self.dry_run else " (LIVE)")
         log.info("  Bankroll: $%.2f", self.risk.bankroll)
-        log.info("  Spread gate: %.0fc | Hold: %ds | Sell: GTC limit",
-                 cfg.MAX_SPREAD * 100, cfg.HOLD_SECONDS)
+        log.info("  Spread gate: %.0fc | Exit: HOLD TO RESOLUTION",
+                 cfg.MAX_SPREAD * 100)
         log.info("="*60)
 
         self._http = httpx.AsyncClient(timeout=15)

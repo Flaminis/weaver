@@ -41,7 +41,7 @@ def main() -> int:
 
     print("=" * 72)
     print(f"  dry_run={'YES (paper)' if dry else 'LIVE'}  daily_pnl=${daily:.2f}  win_rate={wr*100:.0f}%  trades_recorded={len(trades)}")
-    print(f"  Config: HOLD={cfg.HOLD_SECONDS}s  SELL_TIMEOUT={cfg.SELL_TIMEOUT_SEC}s  SELL_GTC_offset≈{cfg.SELL_PRICE_OFFSET}")
+    print(f"  Strategy: HOLD TO RESOLUTION (no active selling)")
     print("=" * 72)
 
     tail = trades[-args.n :] if len(trades) > args.n else trades
@@ -59,8 +59,8 @@ def main() -> int:
         ret_pct = (pnl / notion * 100) if notion > 0 else 0.0
 
         flags = []
-        if hold < cfg.HOLD_SECONDS * 0.5 and hold > 0:
-            flags.append("short_hold")
+        if hold < 60 and hold > 0:
+            flags.append("quick_resolve")
         if pnl < -notion * 0.2 and notion > 0:
             flags.append("large_loss_vs_notional")
         if entry > 0 and exitp > 0 and abs(exitp - entry) / entry > 0.5:
