@@ -1048,6 +1048,10 @@ class LoLTrader:
             return
 
         try:
+            bal_before = await asyncio.get_event_loop().run_in_executor(
+                self._executor, lambda: poly_client.get_token_balance(token_id),
+            )
+
             placed_ts = int(time.time())
             resp = await asyncio.get_event_loop().run_in_executor(
                 self._executor,
@@ -1066,33 +1070,62 @@ class LoLTrader:
             story.append(f"2) buy_fak accepted → order_id={order_id[:20]}… status={status!r}.")
             ev_record["clob_order_id"] = order_id
 
+            # Phase 1: quick get_trades polls (~3s) — catches instant fills with exact data
             fill = None
-            poll_delays = [0.5, 1.0, 1.5, 2.0, 2.5, 2.5, 3.0, 3.0, 3.0]
-            for attempt, delay in enumerate(poll_delays):
+            for attempt in range(3):
                 if attempt:
-                    await asyncio.sleep(delay)
+                    await asyncio.sleep(1.0)
                 fill = await asyncio.get_event_loop().run_in_executor(
                     self._executor,
                     lambda oid=order_id, ts=placed_ts: poly_client.verify_buy_fill(oid, ts),
                 )
                 if fill:
-                    log.info("[ENTRY] Fill found on poll attempt %d for order %s", attempt + 1, order_id[:20])
+                    log.info("[ENTRY] Fill found via get_trades attempt %d", attempt + 1)
                     break
 
+            # Phase 2: balance-delta fallback — on-chain balance updates faster than get_trades
+            fill_via_balance = False
             if not fill:
-                log.warning("[ENTRY] No fill after %d polls (~19s) for order %s", len(poll_delays), order_id[:20])
-                story.append(f"3) Polled get_trades {len(poll_delays)}x (~19s): no row with taker_order_id = this order.")
-                story.append("4) **Did not open a position** — fill not confirmed (may still appear on Polymarket UI later; refresh Activity).")
+                for bal_attempt in range(3):
+                    await asyncio.sleep(2.0)
+                    bal_after = await asyncio.get_event_loop().run_in_executor(
+                        self._executor, lambda: poly_client.get_token_balance(token_id),
+                    )
+                    delta = round(bal_after - bal_before, 2)
+                    log.info("[ENTRY] Balance check %d: before=%.2f after=%.2f delta=%.2f",
+                             bal_attempt + 1, bal_before, bal_after, delta)
+                    if delta >= 0.5:
+                        fill_via_balance = True
+                        fill = {"_balance_delta": True}
+                        break
+                    fill = await asyncio.get_event_loop().run_in_executor(
+                        self._executor,
+                        lambda oid=order_id, ts=placed_ts: poly_client.verify_buy_fill(oid, ts),
+                    )
+                    if fill:
+                        log.info("[ENTRY] Fill found via get_trades (late) attempt %d", bal_attempt + 1)
+                        break
+
+            if not fill:
+                log.warning("[ENTRY] No fill confirmed (~9s) for order %s", order_id[:20])
+                story.append("3) Polled get_trades + balance delta (~9s): no confirmation.")
+                story.append("4) **Did not open a position** — fill not confirmed (check Polymarket Activity).")
                 ev_record["trade_exec"] = "no_fill_confirmed"
                 ev_record["exec_story"] = "\n".join(story)
                 return
 
-            fill_price = float(fill.get("price", buy_price) or buy_price)
-            fill_size, scale_note = _coerce_trade_fill_shares(fill, shares)
-            if scale_note:
-                story.append(f"3) Raw trade row parsed ({scale_note}): {fill_size:.2f} sh @ {fill_price:.4f}.")
+            if fill_via_balance:
+                fill_size = delta
+                fill_price = buy_price
+                story.append(f"3) Fill confirmed via balance delta: +{delta:.2f} sh (before={bal_before:.2f} after={bal_after:.2f}). Price ≈ {fill_price:.4f}.")
+                log.info("[FILL] Confirmed via balance delta: +%.2f sh @ ~%.3f", fill_size, fill_price)
             else:
-                story.append(f"3) Trade matched: {fill_size:.2f} sh @ {fill_price:.4f}.")
+                fill_price = float(fill.get("price", buy_price) or buy_price)
+                fill_size, scale_note = _coerce_trade_fill_shares(fill, shares)
+                if scale_note:
+                    story.append(f"3) Raw trade row parsed ({scale_note}): {fill_size:.2f} sh @ {fill_price:.4f}.")
+                else:
+                    story.append(f"3) Trade matched: {fill_size:.2f} sh @ {fill_price:.4f}.")
 
             if not _fill_size_plausible(fill_size, shares):
                 log.error("[ENTRY] Rejecting fill: size=%.4f vs expected ~%.1f", fill_size, shares)
