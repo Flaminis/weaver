@@ -113,6 +113,7 @@ class LiveMatch:
     series_score: dict[int, int] = field(default_factory=dict)
     active: bool = True
     finished_at: float = 0.0
+    scheduled_at: float = 0.0
     league: str = ""
     status: str = ""
     all_markets: list[MarketSlot] = field(default_factory=list)
@@ -314,9 +315,12 @@ class LoLTrader:
     # ── LLF connection management (max 3) ─────────────────────────────
 
     def _start_llf_for_priority_matches(self):
-        """Connect LLF to top 3 matches by volume. Sticky: once a match receives
-        LLF data (game started), it keeps its slot until the match finishes."""
+        """Connect LLF to top 3 matches by volume. Only consider matches that
+        are running OR scheduled to start within 2 hours. Sticky: once a match
+        receives LLF data (game started), it keeps its slot until the match finishes."""
         MAX_LLF = 3
+        LOOKAHEAD_SEC = 2 * 3600  # 2 hours
+        now = time.time()
 
         # Sticky matches: already connected AND have received game data (llf_msg_count > 0)
         sticky_ids: set[int] = set()
@@ -335,6 +339,12 @@ class LoLTrader:
                 continue
             if not m.active or not m.llf_url or not m.all_markets:
                 continue
+            # Already running — always eligible
+            if m.status == "running":
+                pass
+            # Not running — only if scheduled within lookahead window
+            elif m.scheduled_at > 0 and m.scheduled_at > now + LOOKAHEAD_SEC:
+                continue
             vol = m.gamma.get("volume", 0) if m.gamma else 0
             candidates.append((vol, m.ps_match_id, m))
         candidates.sort(key=lambda x: -x[0])
@@ -350,8 +360,12 @@ class LoLTrader:
                     task = asyncio.create_task(self._llf_listener(m))
                     self._llf_tasks[mid] = task
                     vol = m.gamma.get("volume", 0) if m.gamma else 0
-                    log.info("LLF CONNECT: %s (vol=$%.0f%s)", m.name, vol,
-                             " STICKY" if mid in sticky_ids else "")
+                    starts_in = ""
+                    if m.scheduled_at > 0:
+                        mins = max(0, (m.scheduled_at - now) / 60)
+                        starts_in = f" starts={mins:.0f}m" if mins > 0 else " LIVE"
+                    log.info("LLF CONNECT: %s (vol=$%.0f%s%s)", m.name, vol,
+                             starts_in, " STICKY" if mid in sticky_ids else "")
 
         for mid, task in list(self._llf_tasks.items()):
             if mid not in target_ids and not task.done():
@@ -397,6 +411,13 @@ class LoLTrader:
                     match.signal_model = SignalModel(match.team_a_id, match.team_b_id)
                     match.league = m.get("league", {}).get("name", "?")
                     match.status = m.get("status", "?")
+                    sched = m.get("scheduled_at") or m.get("begin_at") or ""
+                    if sched:
+                        try:
+                            from datetime import datetime, timezone
+                            match.scheduled_at = datetime.fromisoformat(sched.replace("Z", "+00:00")).timestamp()
+                        except Exception:
+                            pass
                     self.matches[mid] = match
                     log.info("MATCH: #%d %s [%s] status=%s",
                              mid, match.name, match.league, match.status)
