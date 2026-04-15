@@ -880,11 +880,12 @@ class LoLTrader:
             ))
 
         for ev in events:
-            await self._process_event(match, ev)
+            await self._process_event(match, ev, prev_teams=prev)
 
     # ── Signal processing ───────────────────────────────────────────────
 
-    async def _process_event(self, match: LiveMatch, event: LolEvent):
+    async def _process_event(self, match: LiveMatch, event: LolEvent,
+                             prev_teams: dict | None = None):
         if not match.token_a or not match.signal_model:
             return
 
@@ -899,9 +900,7 @@ class LoLTrader:
 
         depth_usd, _ = book.available_depth("buy", max_slippage_c=0.03)
 
-        holding = self.risk.holding_direction_for_match(match.ps_match_id)
-
-        recent_move = book.recent_move(cfg.PRICED_IN_WINDOW_SEC)
+        recent_move = book.recent_move(cfg.PRE_EVENT_WINDOW_SEC)
 
         signal, reason = match.signal_model.on_event(
             event=event,
@@ -909,8 +908,7 @@ class LoLTrader:
             bid_a=bid_a,
             ask_a=ask_a,
             spread=spread,
-            holding_direction=holding,
-            recent_move_2s=recent_move,
+            prev_teams=prev_teams,
         )
 
         team_name = match.team_a if event.team_id == match.team_a_id else match.team_b
@@ -948,7 +946,7 @@ class LoLTrader:
             "desc": f"{team_name} ({event.side}): {event.old_value}→{event.new_value} (+{event.delta})",
             "action": reason if signal is None else "TRADE",
             "signal_dir": signal.direction if signal else None,
-            "signal_size": signal.size_usd if signal else None,
+            "signal_size": None,
             "signal_reason": signal.reason if signal else None,
             "signal_impact": signal.expected_impact if signal else None,
             "signal_confidence": signal.confidence if signal else None,
@@ -959,7 +957,7 @@ class LoLTrader:
             "buy_price_a": buy_price_a,
             "buy_price_b": buy_price_b,
             "recent_move_2s": round(recent_move, 4),
-            "holding": holding,
+            "holding": None,
             "market_type": mkt_type,
             "book_snapshot": book_snap,
         }
@@ -976,18 +974,67 @@ class LoLTrader:
                          reason, mid_a * 100, spread * 100)
             return
 
-        active_mkt = match.active_market
-        mkt_label = active_mkt.market_type if active_mkt else "none"
-        log.info("[SIGNAL] G%d [%d:%02d] %s %s — %s dir=%s size=$%.2f impact=%.3f market=%s",
-                 event.game_position, game_min, game_sec,
-                 event.etype.value.upper(), team_name,
-                 signal.reason, signal.direction, signal.size_usd, signal.expected_impact,
-                 mkt_label)
-
+        # ── Edge calculation: market prior + model delta ──────────────
+        model_impact = signal.expected_impact
         token_id = match.token_a if signal.direction == "buy_a" else match.token_b
         buy_price = ask_a if signal.direction == "buy_a" else round(1.0 - bid_a, 2)
+
+        pre_event_mid_a = mid_a - recent_move
+        if signal.direction == "buy_a":
+            pre_event_mid = pre_event_mid_a
+        else:
+            pre_event_mid = 1.0 - pre_event_mid_a
+
+        p_fair = max(0.02, min(0.98, pre_event_mid + model_impact))
+        ask_eff = buy_price * (1.0 + cfg.TAKER_FEE)
+        edge = p_fair - ask_eff
+
+        ev_record["p_fair"] = round(p_fair, 4)
+        ev_record["edge"] = round(edge, 4)
+        ev_record["pre_event_mid"] = round(pre_event_mid, 4)
+
+        if edge < cfg.MIN_EDGE:
+            reason_str = f"LOW_EDGE_{edge:.4f}<{cfg.MIN_EDGE}"
+            log.info("[SKIP] G%d [%d:%02d] %s %s — %s | impact=%.3f p_fair=%.3f ask_eff=%.3f edge=%.4f",
+                     event.game_position, game_min, game_sec,
+                     event.etype.value.upper(), team_name,
+                     reason_str, model_impact, p_fair, ask_eff, edge)
+            ev_record["action"] = reason_str
+            return
+
+        # ── Kelly sizing ──────────────────────────────────────────────
+        if ask_eff >= 1.0 or ask_eff <= 0.0:
+            return
+        b = (1.0 / ask_eff) - 1.0
+        q = 1.0 - p_fair
+        f_star = (p_fair * b - q) / b if b > 0 else 0.0
+        f_star = max(0.0, f_star)
+
+        size_usd = cfg.BANKROLL * f_star * cfg.KELLY_FRACTION
+        depth_cap = depth_usd * cfg.MAX_BOOK_PARTICIPATION
+        size_usd = max(cfg.MIN_BET, min(size_usd, cfg.MAX_SINGLE_BET, depth_cap))
+
+        if size_usd < cfg.MIN_BET:
+            ev_record["action"] = f"SIZE_TOO_SMALL_{size_usd:.2f}"
+            return
+
+        signal.size_usd = round(size_usd, 2)
+        ev_record["signal_size"] = signal.size_usd
+
+        # ── Slippage budget: proportional to edge, capped at 2c ──────
+        slippage = min(edge * 0.25, 0.02)
+        limit_price = buy_price + slippage
+
+        active_mkt = match.active_market
+        mkt_label = active_mkt.market_type if active_mkt else "none"
+        log.info("[TRADE] G%d [%d:%02d] %s %s — %s dir=%s $%.0f | impact=%.3f p_fair=%.3f edge=%.3f kelly=%.3f market=%s",
+                 event.game_position, game_min, game_sec,
+                 event.etype.value.upper(), team_name,
+                 signal.reason, signal.direction, signal.size_usd,
+                 model_impact, p_fair, edge, f_star, mkt_label)
+
         ev_record["attempt_ref_px"] = round(buy_price, 4)
-        ev_record["attempt_limit_price"] = round(buy_price + 0.01, 4)
+        ev_record["attempt_limit_price"] = round(limit_price, 4)
 
         if depth_usd < cfg.MIN_BOOK_DEPTH:
             log.info("[GATE] Thin book: $%.0f depth < $%d min", depth_usd, cfg.MIN_BOOK_DEPTH)
@@ -1006,15 +1053,19 @@ class LoLTrader:
             ev_record["exec_story"] = f"Would have bought but risk gate blocked:\n{gate_reason}"
             return
 
-        await self._execute_entry(match, signal, token_id, buy_price, event, ev_record)
+        await self._execute_entry(match, signal, token_id, buy_price, event, ev_record,
+                                  limit_price=limit_price)
 
     # ── Entry execution ─────────────────────────────────────────────────
 
     async def _execute_entry(
         self, match: LiveMatch, signal: Signal,
         token_id: str, buy_price: float, event: LolEvent,
-        ev_record: dict,
+        ev_record: dict, limit_price: float = 0.0,
     ):
+        if limit_price <= 0:
+            limit_price = buy_price + 0.01
+
         shares = round(signal.size_usd / buy_price, 1) if buy_price > 0 else 0
         if shares < 1:
             log.info("[SKIP] shares < 1 at price %.3f", buy_price)
@@ -1022,8 +1073,6 @@ class LoLTrader:
             ev_record["trade_exec"] = "shares_skip"
             ev_record["exec_story"] = f"Order not sent: size < 1 share at {buy_price:.3f} (need higher $ or price)."
             return
-
-        limit_price = buy_price + 0.01
         story: list[str] = [
             f"1) Entry intent: {signal.direction} ~{shares:.1f} sh @ ≤{limit_price:.3f} (≈${signal.size_usd:.2f} notional).",
         ]

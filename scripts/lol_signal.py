@@ -1,21 +1,35 @@
 """
-LoL Signal Model v2 — tiered objectives, kill-stack sizing, edge vs spread.
+LoL Signal Model v3 — ML-driven impact, EV-based edge gating.
 
-Design goals:
-- Trade ALL kills. Size by kill stack: 1=$10, 2=$40, 3+=$100.
-- Objectives (baron / inhib / drake) use conservative prior "impact" estimates.
-- Priced-in check: skip if market already moved before we could act.
+Uses a trained LightGBM model (EventImpactModel) to predict the win-probability
+shift from each in-game event. The trader downstream computes:
+  p_fair = pre_event_market_mid + model_impact
+  edge   = p_fair - ask * (1 + taker_fee)
+and sizes via Kelly criterion.
 
 Tower / status events are never traded.
 """
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Tuple
 
 import lol_trader_config as cfg
+from training.event_impact import EventImpactModel
+
+log = logging.getLogger("lol_signal")
+
+_IMPACT_MODEL: EventImpactModel | None = None
+
+
+def _get_impact_model() -> EventImpactModel:
+    global _IMPACT_MODEL
+    if _IMPACT_MODEL is None:
+        _IMPACT_MODEL = EventImpactModel()
+        log.info("[SIGNAL] Loaded LightGBM win-probability model")
+    return _IMPACT_MODEL
 
 
 class EventType(str, Enum):
@@ -43,9 +57,9 @@ class LolEvent:
 @dataclass
 class Signal:
     direction: str          # "buy_a" or "buy_b"
-    size_usd: float
+    size_usd: float         # placeholder — trader computes via Kelly
     confidence: float
-    expected_impact: float  # prior edge in price space (same units as mid)
+    expected_impact: float  # ML model's win-probability delta
     reason: str
     events: list[LolEvent]
 
@@ -72,75 +86,46 @@ class ComboWindow:
         cutoff = time.time() - cfg.COMBO_WINDOW_SEC
         return [e for e in self.events if e.team_id == team_id and e.ts >= cutoff]
 
-    def had_objective_since(
-        self,
-        team_id: int,
-        types: tuple[EventType, ...],
-        within_sec: float,
-    ) -> bool:
-        cutoff = time.time() - within_sec
-        return any(
-            e.etype in types and e.team_id == team_id and e.ts >= cutoff
-            for e in self.events
-        )
-
 
 TRADEABLE = {EventType.BARON, EventType.INHIBITOR, EventType.DRAKE, EventType.KILL}
+
+_STAT_KEY_MAP = {
+    EventType.KILL: "kills",
+    EventType.TOWER: "towers",
+    EventType.DRAKE: "drakes",
+    EventType.BARON: "nashors",
+    EventType.INHIBITOR: "inhibitors",
+}
 
 
 def _direction_for_team(team_id: int, team_a_id: int) -> str:
     return "buy_a" if team_id == team_a_id else "buy_b"
 
 
-def _tier_impact_and_size(
-    etype: EventType,
-    is_soul: bool,
-    teamfight_kills: int,
-    had_obj_followup: bool,
-    late_game: bool = False,
-) -> Tuple[float, float, str]:
-    """
-    Return (expected_impact prior, size multiplier vs base, reason suffix).
-
-    Impacts are deliberately conservative fractions of $1 — not calibrated ML,
-    but used for sizing tiers and confidence scoring.
-    """
+def _tier_label(etype: EventType, is_soul: bool, teamfight_kills: int) -> str:
     if etype == EventType.BARON:
-        return 0.09, 1.35, "BARON"
+        return "BARON"
     if etype == EventType.INHIBITOR:
-        return 0.055, 1.15, "INHIB"
+        return "INHIB"
     if etype == EventType.DRAKE:
-        if is_soul:
-            return 0.065, 1.25, "DRAKE_SOUL"
-        return 0.038, 1.0, "DRAKE"
+        return "DRAKE_SOUL" if is_soul else "DRAKE"
     if etype == EventType.KILL:
         if teamfight_kills >= 3:
-            mult = cfg.KILL_SIZE_3PLUS / cfg.BET_SIZE_BASE
-            tier = f"TF{teamfight_kills}k"
-        elif teamfight_kills == 2:
-            mult = cfg.KILL_SIZE_2 / cfg.BET_SIZE_BASE
-            tier = f"STK2"
-        else:
-            mult = cfg.KILL_SIZE_1 / cfg.BET_SIZE_BASE
-            tier = "KILL1"
-        return 0.05, mult, tier
-    return 0.0, 0.0, "NONE"
+            return f"TF{teamfight_kills}k"
+        if teamfight_kills == 2:
+            return "STK2"
+        return "KILL1"
+    return "NONE"
 
 
 class SignalModel:
-    """
-    Per-match state: rolling combo for kill counts; v2 gating.
-    """
+    """Per-match state: rolling combo for kill counts; ML-based impact."""
 
     def __init__(self, team_a_id: int, team_b_id: int):
         self.team_a_id = team_a_id
         self.team_b_id = team_b_id
         self.combo = ComboWindow()
         self._drake_counts: dict[int, int] = {team_a_id: 0, team_b_id: 0}
-        self._initialized = False
-
-    def _team_side(self, team_id: int) -> str:
-        return "a" if team_id == self.team_a_id else "b"
 
     def on_event(
         self,
@@ -149,12 +134,8 @@ class SignalModel:
         bid_a: float,
         ask_a: float,
         spread: float,
-        holding_direction: str | None = None,
-        recent_move_2s: float = 0.0,
+        prev_teams: dict[int, dict] | None = None,
     ) -> tuple[Signal | None, str]:
-        if not self._initialized:
-            self._initialized = True
-
         self.combo.add(event)
 
         if event.etype == EventType.TOWER:
@@ -169,7 +150,6 @@ class SignalModel:
             self._drake_counts[event.team_id] = event.new_value
             is_soul = event.new_value >= 4
 
-        # Liquidity / price hygiene (same as before, explicit)
         if spread > cfg.MAX_SPREAD:
             return None, f"SPREAD_WIDE_{spread:.3f}"
 
@@ -180,54 +160,46 @@ class SignalModel:
         if mid_a < cfg.NEAR_RESOLVED_FLOOR or mid_a > cfg.NEAR_RESOLVED_CEIL:
             return None, f"NEAR_RESOLVED_{mid_a:.3f}"
 
-        # Priced-in directional move (positive = toward team A token)
-        if direction == "buy_a":
-            directional_move = recent_move_2s
-        else:
-            directional_move = -recent_move_2s
+        if prev_teams is None:
+            return None, "NO_GAME_STATE"
+
+        acting_id = event.team_id
+        opponent_id = self.team_b_id if acting_id == self.team_a_id else self.team_a_id
+
+        acting_before = prev_teams.get(acting_id)
+        opp_before = prev_teams.get(opponent_id)
+        if not acting_before or not opp_before:
+            return None, "MISSING_TEAM_STATE"
+
+        acting_after = {**acting_before}
+        stat_key = _STAT_KEY_MAP.get(event.etype)
+        if stat_key:
+            acting_after[stat_key] = event.new_value
+        opp_after = {**opp_before}
+
+        is_blue = str(acting_before.get("side", "")).lower().startswith("blu")
+        game_minute = event.game_timer_sec / 60.0
+
+        try:
+            model = _get_impact_model()
+            model_impact, _, _ = model.predict_impact_from_llf(
+                game_minute=game_minute,
+                team_before=acting_before,
+                team_after=acting_after,
+                opp_before=opp_before,
+                opp_after=opp_after,
+                is_blue=is_blue,
+            )
+        except Exception as exc:
+            log.warning("[SIGNAL] Model prediction failed: %s", exc)
+            return None, f"MODEL_ERROR_{exc}"
+
+        if model_impact <= 0:
+            return None, f"NEG_IMPACT_{model_impact:.4f}"
+
         teamfight_kills = self.combo.recent_kills(event.team_id, cfg.TEAMFIGHT_WINDOW_SEC)
         combo_types = {e.etype for e in self.combo.recent_events(event.team_id)}
-        post_obj = self.combo.had_objective_since(
-            event.team_id,
-            (EventType.BARON, EventType.INHIBITOR, EventType.DRAKE),
-            within_sec=cfg.POST_OBJECTIVE_KILL_WINDOW_SEC,
-        )
-
-        # Priced-in threshold scales with stacked kills — kill #2 allows 2x the move
-        priced_in_limit = cfg.PRICED_IN_THRESHOLD * max(teamfight_kills, 1)
-        already_priced_lo = directional_move > priced_in_limit
-        already_priced_hi = directional_move > priced_in_limit * 1.6
-
-        late_game = mid_a > 0.75 or mid_a < 0.25
-
-        if event.etype == EventType.KILL:
-            if already_priced_lo:
-                if not (holding_direction == direction):
-                    return None, f"PRICED_IN_KILL_mv={directional_move:.3f}_lim={priced_in_limit:.3f}_stk={teamfight_kills}"
-
-        if event.etype in (EventType.BARON, EventType.INHIBITOR, EventType.DRAKE):
-            if already_priced_hi:
-                if holding_direction != direction:
-                    return None, f"PRICED_OBJ_mv={directional_move:.3f}"
-                if event.etype != EventType.BARON:
-                    return None, f"PRICED_ADD_SKIP_{event.etype.value}"
-
-        impact, size_mult, tier = _tier_impact_and_size(
-            event.etype, is_soul, teamfight_kills, post_obj, late_game
-        )
-        if impact <= 0:
-            return None, "NO_IMPACT_TIER"
-
-        if event.etype == EventType.KILL:
-            if teamfight_kills >= 3:
-                size_usd = cfg.KILL_SIZE_3PLUS
-            elif teamfight_kills >= 2:
-                size_usd = cfg.KILL_SIZE_2
-            else:
-                size_usd = cfg.KILL_SIZE_1
-        else:
-            size_usd = cfg.BET_SIZE_BASE * size_mult
-        size_usd = min(size_usd, cfg.MAX_SINGLE_BET)
+        tier = _tier_label(event.etype, is_soul, teamfight_kills)
 
         reason_parts = [tier]
         if is_soul:
@@ -238,9 +210,9 @@ class SignalModel:
 
         signal = Signal(
             direction=direction,
-            size_usd=round(size_usd, 2),
-            confidence=min(0.95, 0.55 + impact * 4),
-            expected_impact=round(impact, 4),
+            size_usd=0.0,
+            confidence=min(0.95, 0.50 + model_impact * 3),
+            expected_impact=round(model_impact, 4),
             reason=reason,
             events=[event],
         )

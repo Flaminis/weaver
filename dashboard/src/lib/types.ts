@@ -141,6 +141,9 @@ export interface EventData {
   signal_reason: string | null
   signal_impact: number | null
   signal_confidence: number | null
+  p_fair?: number | null
+  edge?: number | null
+  pre_event_mid?: number | null
   mid: number
   bid: number
   ask: number

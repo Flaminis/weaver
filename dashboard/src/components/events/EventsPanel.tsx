@@ -172,7 +172,8 @@ export function EventsPanel({ data }: { data?: TraderState }) {
                           <span>Dir <span className="text-[#bbb]">{ev.signal_dir}</span></span>
                           {ev.signal_size != null && <span>Size <span className="text-[#bbb]">${ev.signal_size.toFixed(2)}</span></span>}
                           {ev.signal_impact != null && <span>Imp <span className="text-[#bbb]">{(ev.signal_impact * 100).toFixed(1)}¢</span></span>}
-                          {ev.signal_confidence != null && <span>Conf <span className="text-[#bbb]">{(ev.signal_confidence * 100).toFixed(0)}%</span></span>}
+                          {ev.edge != null && <span>Edge <span className={ev.edge >= 0.02 ? 'text-green-400' : 'text-red-400/60'}>{(ev.edge * 100).toFixed(1)}¢</span></span>}
+                          {ev.p_fair != null && <span>pFair <span className="text-[#bbb]">{(ev.p_fair * 100).toFixed(1)}¢</span></span>}
                         </div>
                       )}
                       {ev.book_snapshot && (ev.book_snapshot.bids.length > 0 || ev.book_snapshot.asks.length > 0) && (
