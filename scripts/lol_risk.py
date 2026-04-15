@@ -56,8 +56,6 @@ class RiskManager:
         self.capital = bankroll
         self.positions: list[Position] = []
         self.trades: list[TradeRecord] = []
-        self._token_cooldowns: dict[str, float] = {}
-        self._match_cooldowns: dict[int, float] = {}
         self._session_start = time.time()
         self._daily_pnl: float = 0.0
 
@@ -86,31 +84,12 @@ class RiskManager:
     # ── Pre-trade checks ────────────────────────────────────────────────
 
     def check_entry(self, token_id: str, match_id: int, size_usd: float) -> tuple[bool, str]:
-        now = time.time()
-
-        cd = self._token_cooldowns.get(token_id, 0)
-        if now < cd:
-            return False, f"TOKEN_COOLDOWN_{cd - now:.0f}s"
-
-        mcd = self._match_cooldowns.get(match_id, 0)
-        if now < mcd:
-            return False, f"MATCH_COOLDOWN_{mcd - now:.0f}s"
-
-        if self.total_exposure + size_usd > cfg.MAX_TOTAL_EXPOSURE:
-            return False, f"EXPOSURE_{self.total_exposure:.1f}+{size_usd:.1f}>{cfg.MAX_TOTAL_EXPOSURE}"
-
-        existing = self.position_for_token(token_id)
-        if existing:
-            return False, "ALREADY_POSITIONED"
-
         return True, "OK"
 
     # ── Record entry ────────────────────────────────────────────────────
 
     def record_entry(self, pos: Position):
         self.positions.append(pos)
-        self._token_cooldowns[pos.token_id] = time.time() + cfg.TOKEN_COOLDOWN_SEC
-        self._match_cooldowns[pos.match_id] = time.time() + cfg.MATCH_COOLDOWN_SEC
         log.info("POSITION OPENED: %s %s %.1f shares @ %.3f ($%.2f) — %s",
                  pos.direction, pos.match_name, pos.size, pos.entry_price,
                  pos.cost_usd, pos.signal_reason)

@@ -4,8 +4,7 @@ LoL Signal Model v2 — tiered objectives, kill-stack sizing, edge vs spread.
 Design goals:
 - Trade ALL kills. Size by kill stack: 1=$10, 2=$40, 3+=$100.
 - Objectives (baron / inhib / drake) use conservative prior "impact" estimates.
-- Enforce cfg.MIN_EDGE: expected_impact must exceed spread + MIN_EDGE (else skip).
-- Priced-in: stricter on noise (kills); objectives get a wider skip threshold.
+- Priced-in check: skip if market already moved before we could act.
 
 Tower / status events are never traded.
 """
@@ -104,7 +103,7 @@ def _tier_impact_and_size(
     Return (expected_impact prior, size multiplier vs base, reason suffix).
 
     Impacts are deliberately conservative fractions of $1 — not calibrated ML,
-    but used only vs MIN_EDGE + spread so obviously weak prints (single kills) fail.
+    but used for sizing tiers and confidence scoring.
     """
     if etype == EventType.BARON:
         return 0.09, 1.35, "BARON"
@@ -199,23 +198,11 @@ class SignalModel:
 
         late_game = mid_a > 0.75 or mid_a < 0.25
 
-        # Underdog filter: buying the losing side in a decided game needs strong evidence.
-        # Single kills by the losing team are noise. Baron/inhib/teamfight = real comeback signal.
-        buying_underdog = (mid_a > 0.75 and direction == "buy_b") or \
-                          (mid_a < 0.25 and direction == "buy_a")
-        if buying_underdog:
-            is_major_objective = event.etype in (EventType.BARON, EventType.INHIBITOR)
-            is_stacked_kills = event.etype == EventType.KILL and teamfight_kills >= 2
-            if not (is_major_objective or is_stacked_kills):
-                return None, f"UNDERDOG_WEAK_sig_{event.etype.value}_stk{teamfight_kills}_mid{mid_a:.3f}"
         if event.etype == EventType.KILL:
             if already_priced_lo:
                 if not (holding_direction == direction):
                     return None, f"PRICED_IN_KILL_mv={directional_move:.3f}"
-                if teamfight_kills < cfg.TEAMFIGHT_KILL_THRESHOLD:
-                    return None, f"PRICED_HOLD_NEED_TF_mv={directional_move:.3f}"
 
-        # Objectives: skip if the whole move already happened (wider bar for real objs)
         if event.etype in (EventType.BARON, EventType.INHIBITOR, EventType.DRAKE):
             if already_priced_hi:
                 if holding_direction != direction:
@@ -228,11 +215,6 @@ class SignalModel:
         )
         if impact <= 0:
             return None, "NO_IMPACT_TIER"
-
-        # Core edge check — this is what v1 never did with MIN_EDGE
-        edge_after_spread = impact - spread
-        if edge_after_spread < cfg.MIN_EDGE:
-            return None, f"LOW_EDGE_imp{impact:.3f}_spr{spread:.3f}_need{cfg.MIN_EDGE:.3f}"
 
         if event.etype == EventType.KILL:
             if teamfight_kills >= 3:

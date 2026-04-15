@@ -10,7 +10,6 @@ Exit: HOLD TO RESOLUTION — no active selling. Winning shares pay $1.00.
 TRADE_MIN_PRICE = 0.02          # Don't buy below 2c
 TRADE_MAX_PRICE = 0.85          # Don't buy above 85c
 MAX_SPREAD = 0.02               # Max 2c spread
-MIN_EDGE = 0.02                 # v2: impact_prior - spread must exceed this
 MIN_BOOK_DEPTH = 30             # $ depth within 3c of best (buy side)
 PRICED_IN_WINDOW_SEC = 2.0      # Look-back window for priced-in check
 PRICED_IN_THRESHOLD = 0.045     # v2: stricter on noisy legs (was 5c flat)
@@ -29,12 +28,9 @@ KILL_SIZE_1 = 10.0              # $10 on a single kill
 KILL_SIZE_2 = 40.0              # $40 on 2 stacked kills
 KILL_SIZE_3PLUS = 100.0         # $100 on 3+ stacked kills
 MAX_SINGLE_BET = 100.0          # $100 max single trade
-MAX_TOTAL_EXPOSURE = 300.0      # $300 max across all open positions
 
 # ── Cooldowns ───────────────────────────────────────────────────────────
-
-TOKEN_COOLDOWN_SEC = 30         # Don't re-enter same token for 30s
-MATCH_COOLDOWN_SEC = 5          # Min 5s between trades on same match
+# All cooldowns removed — bot trades every signal.
 
 # ── PandaScore ──────────────────────────────────────────────────────────
 
