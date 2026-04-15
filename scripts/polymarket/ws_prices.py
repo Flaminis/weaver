@@ -46,6 +46,7 @@ class BookState:
     raw_bids: list = field(default_factory=list)
     raw_asks: list = field(default_factory=list)
     price_history: list[tuple[float, float]] = field(default_factory=list)
+    tick_buffer: list[dict] = field(default_factory=list)
 
     def update_from_book(self, bids: list, asks: list):
         sorted_bids = sorted(bids, key=lambda x: -float(x["price"]))
@@ -84,6 +85,13 @@ class BookState:
         self.price_history.append((ts, self.mid))
         if len(self.price_history) > 3000:
             self.price_history = self.price_history[-1500:]
+        self.tick_buffer.append({
+            "ts": ts, "mid": self.mid,
+            "bid": self.best_bid, "ask": self.best_ask,
+            "spread": self.spread,
+        })
+        if len(self.tick_buffer) > 500:
+            self.tick_buffer = self.tick_buffer[-250:]
 
     def recent_move(self, window_sec: float = 2.0) -> float:
         """How much mid moved in the last window_sec. Positive = up."""

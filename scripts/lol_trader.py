@@ -1036,6 +1036,22 @@ class LoLTrader:
         ev_record["attempt_ref_px"] = round(buy_price, 4)
         ev_record["attempt_limit_price"] = round(limit_price, 4)
 
+        # ── Tape: record book around this signal for post-analysis ────
+        before_ticks = [t for t in book.tick_buffer if t["ts"] >= now_ts - 3.0]
+        game_state = None
+        if prev_teams:
+            game_state = {}
+            for tid, st in prev_teams.items():
+                tname = match.team_a if tid == match.team_a_id else match.team_b
+                game_state[tname] = {k: v for k, v in st.items() if k != "id"}
+        asyncio.create_task(self._record_trade_tape(
+            match=match, event=event, signal=signal, book=book,
+            ev_record=ev_record, before_ticks=before_ticks,
+            signal_ts=now_ts, f_star=f_star,
+            pre_event_mid=pre_event_mid, p_fair=p_fair, edge=edge,
+            game_state=game_state,
+        ))
+
         if depth_usd < cfg.MIN_BOOK_DEPTH:
             log.info("[GATE] Thin book: $%.0f depth < $%d min", depth_usd, cfg.MIN_BOOK_DEPTH)
             ev_record["action"] = "GATED"
@@ -1055,6 +1071,105 @@ class LoLTrader:
 
         await self._execute_entry(match, signal, token_id, buy_price, event, ev_record,
                                   limit_price=limit_price)
+
+    # ── Trade tape recorder ────────────────────────────────────────────
+
+    @staticmethod
+    def _snapshot_book(book: BookState) -> dict:
+        bids = [{"p": round(float(l["price"]), 4), "s": round(float(l.get("size", 0)), 2)}
+                for l in book.raw_bids[:5]]
+        asks = [{"p": round(float(l["price"]), 4), "s": round(float(l.get("size", 0)), 2)}
+                for l in book.raw_asks[:5]]
+        depth_buy, _ = book.available_depth("buy", max_slippage_c=0.03)
+        depth_sell, _ = book.available_depth("sell", max_slippage_c=0.03)
+        return {
+            "mid": round(book.mid, 4),
+            "bid": round(book.best_bid, 4),
+            "ask": round(book.best_ask, 4),
+            "spread": round(book.spread, 4),
+            "depth_buy": round(depth_buy, 1),
+            "depth_sell": round(depth_sell, 1),
+            "bids": bids,
+            "asks": asks,
+        }
+
+    async def _record_trade_tape(
+        self, match: LiveMatch, event: LolEvent, signal: Signal,
+        book: BookState, ev_record: dict,
+        before_ticks: list[dict], signal_ts: float,
+        f_star: float, pre_event_mid: float, p_fair: float, edge: float,
+        game_state: dict | None = None,
+    ):
+        try:
+            after_ticks = []
+            for i in range(61):
+                if not book.has_book:
+                    break
+                snap = self._snapshot_book(book)
+                snap["ts_offset"] = round(time.time() - signal_ts, 2)
+                after_ticks.append(snap)
+                if i < 60:
+                    await asyncio.sleep(1.0)
+
+            team_name = match.team_a if event.team_id == match.team_a_id else match.team_b
+            tape = {
+                "signal_ts": signal_ts,
+                "signal_time": datetime.fromtimestamp(signal_ts).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                "match": match.name,
+                "match_id": match.ps_match_id,
+                "team_a": match.team_a,
+                "team_b": match.team_b,
+                "game_state": game_state,
+                "event": {
+                    "type": event.etype.value,
+                    "team": team_name,
+                    "clock": f"{event.game_timer_sec // 60}:{event.game_timer_sec % 60:02d}",
+                    "delta": event.delta,
+                    "old_value": event.old_value,
+                    "new_value": event.new_value,
+                },
+                "signal": {
+                    "direction": signal.direction,
+                    "size_usd": signal.size_usd,
+                    "model_impact": signal.expected_impact,
+                    "p_fair": round(p_fair, 4),
+                    "edge": round(edge, 4),
+                    "pre_event_mid": round(pre_event_mid, 4),
+                    "reason": signal.reason,
+                    "kelly_f": round(f_star, 4),
+                },
+                "execution": {
+                    "action": ev_record.get("action"),
+                    "buy_price": ev_record.get("attempt_ref_px"),
+                    "limit_price": ev_record.get("attempt_limit_price"),
+                    "trade_exec": ev_record.get("trade_exec"),
+                    "fill_price": ev_record.get("fill_price"),
+                    "fill_shares": ev_record.get("fill_reported_shares"),
+                    "gate_reason": ev_record.get("gate_reason"),
+                },
+                "ticks_before": [
+                    {
+                        "ts_offset": round(t["ts"] - signal_ts, 3),
+                        "mid": round(t["mid"], 4),
+                        "bid": round(t["bid"], 4),
+                        "ask": round(t["ask"], 4),
+                        "spread": round(t["spread"], 4),
+                    }
+                    for t in before_ticks
+                ],
+                "ticks_after": after_ticks,
+            }
+
+            outdir = Path(__file__).resolve().parent.parent / "logs" / "trade_tapes"
+            outdir.mkdir(parents=True, exist_ok=True)
+            dt = datetime.fromtimestamp(signal_ts)
+            safe_name = match.name.replace(" ", "_").replace("/", "-")
+            fname = f"{dt.strftime('%Y%m%d_%H%M%S')}_{safe_name}_{event.etype.value}.json"
+            with open(outdir / fname, "w") as f:
+                json.dump(tape, f, indent=2, default=str)
+            log.info("[TAPE] Saved %s (%d before + %d after ticks)", fname, len(before_ticks), len(after_ticks))
+        except Exception as exc:
+            log.warning("[TAPE] Recording failed: %s", exc)
 
     # ── Entry execution ─────────────────────────────────────────────────
 
