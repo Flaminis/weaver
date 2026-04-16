@@ -1,0 +1,3318 @@
+[
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 126204,
+                    "name": "Vitality.Bee",
+                    "location": "FR",
+                    "slug": "vitality-bee",
+                    "modified_at": "2026-04-06T11:02:59Z",
+                    "acronym": "VIT.B",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/126204/team_vitalitylogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 137898,
+                    "name": "TLN Pirates",
+                    "location": "",
+                    "slug": "tln-pirates",
+                    "modified_at": "2026-04-06T11:03:01Z",
+                    "acronym": "TLNP",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/137898/tln_pirates_2026_allmode.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278605,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445094,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-14T14:19:03Z",
+        "original_scheduled_at": "2026-04-15T16:00:00Z",
+        "begin_at": "2026-04-15T16:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 126204,
+                "score": 0
+            },
+            {
+                "team_id": 137898,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "vitality-bee-vs-tln-pirates-2026-04-15",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445094/low_latency_feed",
+            "opens_at": "2026-04-15T15:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445094,
+        "name": "VIT.B vs TLNP",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-15T16:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134336,
+                    "name": "Esprit Sh\u014dnen",
+                    "location": "FR",
+                    "slug": "esprit-shonen",
+                    "modified_at": "2026-04-06T11:03:00Z",
+                    "acronym": "ES",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134336/esprit_sh_253_fnenlogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 1449,
+                    "name": "Solary",
+                    "location": "FR",
+                    "slug": "solary",
+                    "modified_at": "2026-04-06T11:02:57Z",
+                    "acronym": "SLY",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/1449/123px_solarylogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/1449/solary_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278606,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445095,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T09:01:52Z",
+        "original_scheduled_at": "2026-04-15T17:00:00Z",
+        "begin_at": "2026-04-15T17:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 134336,
+                "score": 0
+            },
+            {
+                "team_id": 1449,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "esprit-shonen-vs-solary-2026-04-15",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445095/low_latency_feed",
+            "opens_at": "2026-04-15T16:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445095,
+        "name": "ES vs SLY",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-15T17:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 137901,
+                    "name": "ZYB Esport",
+                    "location": "FR",
+                    "slug": "zyb-esport",
+                    "modified_at": "2026-04-06T11:08:37Z",
+                    "acronym": "ZYB",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/137901/zyb_esport_lightmode.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/137901/zyb_esport_darkmode.png"
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 136019,
+                    "name": "Galions",
+                    "location": "FR",
+                    "slug": "galions",
+                    "modified_at": "2026-04-06T11:02:49Z",
+                    "acronym": "GAL",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/136019/galionslogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/136019/galions_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278607,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445096,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-14T14:19:25Z",
+        "original_scheduled_at": "2026-04-15T18:00:00Z",
+        "begin_at": "2026-04-15T18:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 137901,
+                "score": 0
+            },
+            {
+                "team_id": 136019,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "zyb-esport-vs-galions-2026-04-15",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445096/low_latency_feed",
+            "opens_at": "2026-04-15T17:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445096,
+        "name": "ZYB vs GAL",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-15T18:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 130384,
+                    "name": "Joblife",
+                    "location": "FR",
+                    "slug": "joblife",
+                    "modified_at": "2026-04-06T11:02:52Z",
+                    "acronym": "JL",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/130384/joblifelogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/130384/joblife_darkmode.png"
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134337,
+                    "name": "Ici Japon Corp. Esport",
+                    "location": "FR",
+                    "slug": "ici-japon-corp-esport",
+                    "modified_at": "2026-04-06T11:02:50Z",
+                    "acronym": "IJC",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134337/ici_japon_corp._esportlogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278608,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445097,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-14T14:19:31Z",
+        "original_scheduled_at": "2026-04-15T19:00:00Z",
+        "begin_at": "2026-04-15T19:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 130384,
+                "score": 0
+            },
+            {
+                "team_id": 134337,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "joblife-vs-ici-japon-corp-esport-2026-04-15",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445097/low_latency_feed",
+            "opens_at": "2026-04-15T18:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445097,
+        "name": "JL vs IJC",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-15T19:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134158,
+                    "name": "Skillcamp Esport",
+                    "location": "FR",
+                    "slug": "skillcamp-esport",
+                    "modified_at": "2026-04-06T11:03:02Z",
+                    "acronym": "SC",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134158/skillcamplogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 128268,
+                    "name": "Karmine Corp Blue",
+                    "location": "FR",
+                    "slug": "karmine-corp",
+                    "modified_at": "2026-04-06T11:02:54Z",
+                    "acronym": "KCB",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/128268/600px_karmine_corp_allmode.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278609,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445098,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-14T14:19:34Z",
+        "original_scheduled_at": "2026-04-15T20:00:00Z",
+        "begin_at": "2026-04-15T20:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 134158,
+                "score": 0
+            },
+            {
+                "team_id": 128268,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "skillcamp-esport-vs-karmine-corp-blue-2026-04-15",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445098/low_latency_feed",
+            "opens_at": "2026-04-15T19:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445098,
+        "name": "SC vs KCB",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-15T20:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 128218,
+                    "name": "HANJIN BRION",
+                    "location": "KR",
+                    "slug": "fredit-brion",
+                    "modified_at": "2026-04-01T09:29:27Z",
+                    "acronym": "BRO",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/128218/brio_nlogo_profile.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 2882,
+                    "name": "Gen.G",
+                    "location": "KR",
+                    "slug": "geng",
+                    "modified_at": "2026-03-27T16:17:08Z",
+                    "acronym": "GEN",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/2882/500px_gen.g_esports_2019_full_lightmode.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/2882/499px_gen.g_esports_2019_full_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 276891,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413442,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276892,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413442,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276893,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413442,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:01:26Z",
+        "original_scheduled_at": "2026-04-16T08:00:00Z",
+        "begin_at": "2026-04-16T08:00:00Z",
+        "league_id": 293,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lck",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lck"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413442",
+            "opens_at": "2026-04-16T07:45:00.000000Z"
+        },
+        "serie_id": 10419,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 128218,
+                "score": 0
+            },
+            {
+                "team_id": 2882,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "hanjin-brion-vs-gen-g-2026-04-16",
+        "tournament_id": 20577,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413442/low_latency_feed",
+            "opens_at": "2026-04-16T07:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20577,
+            "name": "Rounds 1-2",
+            "type": "offline",
+            "country": "KR",
+            "begin_at": "2026-04-01T08:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-31T13:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026-rounds-1-2",
+            "serie_id": 10419,
+            "modified_at": "2026-04-15T13:09:06Z",
+            "league_id": 293,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1413442,
+        "name": "BRO vs GEN",
+        "league": {
+            "id": 293,
+            "name": "LCK",
+            "url": null,
+            "slug": "league-of-legends-lck-champions-korea",
+            "modified_at": "2021-01-06T15:41:48Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/293/lck_2021_logo-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10419,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-01T08:00:00Z",
+            "end_at": "2026-09-13T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026",
+            "modified_at": "2026-03-24T08:49:55Z",
+            "league_id": 293,
+            "season": null,
+            "full_name": "2026"
+        },
+        "scheduled_at": "2026-04-16T08:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 2574,
+                    "name": "Team WE",
+                    "location": "CN",
+                    "slug": "we",
+                    "modified_at": "2026-04-03T13:31:40Z",
+                    "acronym": "WE",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/2574/300px-Team_WElogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 129971,
+                    "name": "Anyone's Legend",
+                    "location": "CN",
+                    "slug": "anyone-s-legend",
+                    "modified_at": "2026-03-29T16:56:21Z",
+                    "acronym": "AL",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/129971/1083px_anyone_s_legend_full_lightmode.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/129971/1083px_anyone_s_legend_full_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278142,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420905,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278143,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420905,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278144,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420905,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:01:32Z",
+        "original_scheduled_at": "2026-04-16T09:00:00Z",
+        "begin_at": "2026-04-16T09:00:00Z",
+        "league_id": 294,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lplenglish",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lplenglish"
+            },
+            {
+                "main": false,
+                "language": "zh",
+                "embed_url": "https://liveshare.huya.com/iframe/lpl",
+                "official": false,
+                "raw_url": "https://www.huya.com/lpl"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420905",
+            "opens_at": "2026-04-16T08:45:00.000000Z"
+        },
+        "serie_id": 10423,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 2574,
+                "score": 0
+            },
+            {
+                "team_id": 129971,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "team-we-vs-anyone-s-legend-2026-04-16",
+        "tournament_id": 20588,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420905/low_latency_feed",
+            "opens_at": "2026-04-16T08:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20588,
+            "name": "Group Ascend",
+            "type": "offline",
+            "country": "CN",
+            "begin_at": "2026-04-04T07:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-17T15:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026-group-ascend",
+            "serie_id": 10423,
+            "modified_at": "2026-04-15T13:51:52Z",
+            "league_id": 294,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1420905,
+        "name": "WE vs AL",
+        "league": {
+            "id": 294,
+            "name": "LPL",
+            "url": "http://www.lolesports.com/en_US/lpl-china",
+            "slug": "league-of-legends-lpl-china",
+            "modified_at": "2020-06-02T08:53:12Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/294/lpl_2020-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10423,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-04T07:00:00Z",
+            "end_at": "2026-06-14T14:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026",
+            "modified_at": "2026-03-29T10:03:16Z",
+            "league_id": 294,
+            "season": "Split 2",
+            "full_name": "Split 2 2026"
+        },
+        "scheduled_at": "2026-04-16T09:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 136063,
+                    "name": "DN SOOPers",
+                    "location": "KR",
+                    "slug": "dn-freecs",
+                    "modified_at": "2026-04-01T09:29:27Z",
+                    "acronym": "DNS",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/136063/dn_soo_perslogo_profile.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/136063/dn_soo_perslogo_profile.png"
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 2883,
+                    "name": "Hanwha Life Esports",
+                    "location": "KR",
+                    "slug": "hanwha-life-esports",
+                    "modified_at": "2026-03-27T16:17:09Z",
+                    "acronym": "HLE",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/2883/hanwha-life-esports-1s04vbu0.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 276894,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413443,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276895,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413443,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276896,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413443,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:01:29Z",
+        "original_scheduled_at": "2026-04-16T10:00:00Z",
+        "begin_at": "2026-04-16T10:00:00Z",
+        "league_id": 293,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lck",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lck"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413443",
+            "opens_at": "2026-04-16T09:45:00.000000Z"
+        },
+        "serie_id": 10419,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 136063,
+                "score": 0
+            },
+            {
+                "team_id": 2883,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "dn-soopers-vs-hanwha-life-esports-2026-04-16",
+        "tournament_id": 20577,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413443/low_latency_feed",
+            "opens_at": "2026-04-16T09:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20577,
+            "name": "Rounds 1-2",
+            "type": "offline",
+            "country": "KR",
+            "begin_at": "2026-04-01T08:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-31T13:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026-rounds-1-2",
+            "serie_id": 10419,
+            "modified_at": "2026-04-15T13:09:06Z",
+            "league_id": 293,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1413443,
+        "name": "DNS vs HLE",
+        "league": {
+            "id": 293,
+            "name": "LCK",
+            "url": null,
+            "slug": "league-of-legends-lck-champions-korea",
+            "modified_at": "2021-01-06T15:41:48Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/293/lck_2021_logo-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10419,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-01T08:00:00Z",
+            "end_at": "2026-09-13T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026",
+            "modified_at": "2026-03-24T08:49:55Z",
+            "league_id": 293,
+            "season": null,
+            "full_name": "2026"
+        },
+        "scheduled_at": "2026-04-16T10:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 126059,
+                    "name": "Top Esports",
+                    "location": "CN",
+                    "slug": "top-esports",
+                    "modified_at": "2026-04-04T08:00:52Z",
+                    "acronym": "TES",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/126059/top_esportslogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 1566,
+                    "name": "Bilibili Gaming",
+                    "location": "CN",
+                    "slug": "bilibili-gaming",
+                    "modified_at": "2026-03-29T16:56:26Z",
+                    "acronym": "BLG",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/1566/qw_yi_qu_j.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278145,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420906,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278146,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420906,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278147,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420906,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:01:34Z",
+        "original_scheduled_at": "2026-04-16T11:00:00Z",
+        "begin_at": "2026-04-16T11:00:00Z",
+        "league_id": 294,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lplenglish",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lplenglish"
+            },
+            {
+                "main": false,
+                "language": "zh",
+                "embed_url": "https://liveshare.huya.com/iframe/lpl",
+                "official": false,
+                "raw_url": "https://www.huya.com/lpl"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420906",
+            "opens_at": "2026-04-16T10:45:00.000000Z"
+        },
+        "serie_id": 10423,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 126059,
+                "score": 0
+            },
+            {
+                "team_id": 1566,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "top-esports-vs-bilibili-gaming-2026-04-16",
+        "tournament_id": 20588,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420906/low_latency_feed",
+            "opens_at": "2026-04-16T10:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20588,
+            "name": "Group Ascend",
+            "type": "offline",
+            "country": "CN",
+            "begin_at": "2026-04-04T07:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-17T15:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026-group-ascend",
+            "serie_id": 10423,
+            "modified_at": "2026-04-15T13:51:52Z",
+            "league_id": 294,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1420906,
+        "name": "TES vs BLG",
+        "league": {
+            "id": 294,
+            "name": "LPL",
+            "url": "http://www.lolesports.com/en_US/lpl-china",
+            "slug": "league-of-legends-lpl-china",
+            "modified_at": "2020-06-02T08:53:12Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/294/lpl_2020-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10423,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-04T07:00:00Z",
+            "end_at": "2026-06-14T14:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026",
+            "modified_at": "2026-03-29T10:03:16Z",
+            "league_id": 294,
+            "season": "Split 2",
+            "full_name": "Split 2 2026"
+        },
+        "scheduled_at": "2026-04-16T11:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134336,
+                    "name": "Esprit Sh\u014dnen",
+                    "location": "FR",
+                    "slug": "esprit-shonen",
+                    "modified_at": "2026-04-06T11:03:00Z",
+                    "acronym": "ES",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134336/esprit_sh_253_fnenlogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134337,
+                    "name": "Ici Japon Corp. Esport",
+                    "location": "FR",
+                    "slug": "ici-japon-corp-esport",
+                    "modified_at": "2026-04-06T11:02:50Z",
+                    "acronym": "IJC",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134337/ici_japon_corp._esportlogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278610,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445099,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:03:08Z",
+        "original_scheduled_at": "2026-04-16T16:00:00Z",
+        "begin_at": "2026-04-16T16:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 134336,
+                "score": 0
+            },
+            {
+                "team_id": 134337,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "esprit-shonen-vs-ici-japon-corp-esport-2026-04-16",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445099/low_latency_feed",
+            "opens_at": "2026-04-16T15:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445099,
+        "name": "ES vs IJC",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-16T16:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134158,
+                    "name": "Skillcamp Esport",
+                    "location": "FR",
+                    "slug": "skillcamp-esport",
+                    "modified_at": "2026-04-06T11:03:02Z",
+                    "acronym": "SC",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134158/skillcamplogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 136019,
+                    "name": "Galions",
+                    "location": "FR",
+                    "slug": "galions",
+                    "modified_at": "2026-04-06T11:02:49Z",
+                    "acronym": "GAL",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/136019/galionslogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/136019/galions_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278611,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445100,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:03:15Z",
+        "original_scheduled_at": "2026-04-16T17:00:00Z",
+        "begin_at": "2026-04-16T17:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 134158,
+                "score": 0
+            },
+            {
+                "team_id": 136019,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "skillcamp-esport-vs-galions-2026-04-16",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445100/low_latency_feed",
+            "opens_at": "2026-04-16T16:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445100,
+        "name": "SC vs GAL",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-16T17:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 137901,
+                    "name": "ZYB Esport",
+                    "location": "FR",
+                    "slug": "zyb-esport",
+                    "modified_at": "2026-04-06T11:08:37Z",
+                    "acronym": "ZYB",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/137901/zyb_esport_lightmode.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/137901/zyb_esport_darkmode.png"
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 137898,
+                    "name": "TLN Pirates",
+                    "location": "",
+                    "slug": "tln-pirates",
+                    "modified_at": "2026-04-06T11:03:01Z",
+                    "acronym": "TLNP",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/137898/tln_pirates_2026_allmode.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278612,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445101,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:03:26Z",
+        "original_scheduled_at": "2026-04-16T18:00:00Z",
+        "begin_at": "2026-04-16T18:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 137901,
+                "score": 0
+            },
+            {
+                "team_id": 137898,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "zyb-esport-vs-tln-pirates-2026-04-16",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445101/low_latency_feed",
+            "opens_at": "2026-04-16T17:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445101,
+        "name": "ZYB vs TLNP",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-16T18:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 128268,
+                    "name": "Karmine Corp Blue",
+                    "location": "FR",
+                    "slug": "karmine-corp",
+                    "modified_at": "2026-04-06T11:02:54Z",
+                    "acronym": "KCB",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/128268/600px_karmine_corp_allmode.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 1449,
+                    "name": "Solary",
+                    "location": "FR",
+                    "slug": "solary",
+                    "modified_at": "2026-04-06T11:02:57Z",
+                    "acronym": "SLY",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/1449/123px_solarylogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/1449/solary_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278613,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445102,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:03:36Z",
+        "original_scheduled_at": "2026-04-16T19:00:00Z",
+        "begin_at": "2026-04-16T19:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 128268,
+                "score": 0
+            },
+            {
+                "team_id": 1449,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "karmine-corp-blue-vs-solary-2026-04-16",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445102/low_latency_feed",
+            "opens_at": "2026-04-16T18:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445102,
+        "name": "KCB vs SLY",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-16T19:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 126204,
+                    "name": "Vitality.Bee",
+                    "location": "FR",
+                    "slug": "vitality-bee",
+                    "modified_at": "2026-04-06T11:02:59Z",
+                    "acronym": "VIT.B",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/126204/team_vitalitylogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 130384,
+                    "name": "Joblife",
+                    "location": "FR",
+                    "slug": "joblife",
+                    "modified_at": "2026-04-06T11:02:52Z",
+                    "acronym": "JL",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/130384/joblifelogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/130384/joblife_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278614,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445103,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-15T14:03:38Z",
+        "original_scheduled_at": "2026-04-16T20:00:00Z",
+        "begin_at": "2026-04-16T20:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 126204,
+                "score": 0
+            },
+            {
+                "team_id": 130384,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "vitality-bee-vs-joblife-2026-04-16",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445103/low_latency_feed",
+            "opens_at": "2026-04-16T19:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445103,
+        "name": "VIT.B vs JL",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-16T20:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 126370,
+                    "name": "Kiwoom DRX",
+                    "location": "KR",
+                    "slug": "dragonx",
+                    "modified_at": "2026-04-04T10:26:36Z",
+                    "acronym": "KRX",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/126370/220px_dr_xlogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134115,
+                    "name": "BNK FEARX",
+                    "location": "KR",
+                    "slug": "fearx",
+                    "modified_at": "2026-04-01T09:29:27Z",
+                    "acronym": "BFX",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134115/bnk_fear_xlogo_profile.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 276897,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413444,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276898,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413444,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276899,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413444,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-03-24T08:49:56Z",
+        "original_scheduled_at": "2026-04-17T08:00:00Z",
+        "begin_at": "2026-04-17T08:00:00Z",
+        "league_id": 293,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lck",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lck"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413444",
+            "opens_at": "2026-04-17T07:45:00.000000Z"
+        },
+        "serie_id": 10419,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 126370,
+                "score": 0
+            },
+            {
+                "team_id": 134115,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "kiwoom-drx-vs-bnk-fearx-2026-04-17",
+        "tournament_id": 20577,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413444/low_latency_feed",
+            "opens_at": "2026-04-17T07:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20577,
+            "name": "Rounds 1-2",
+            "type": "offline",
+            "country": "KR",
+            "begin_at": "2026-04-01T08:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-31T13:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026-rounds-1-2",
+            "serie_id": 10419,
+            "modified_at": "2026-04-15T13:09:06Z",
+            "league_id": 293,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1413444,
+        "name": "KRX vs BFX",
+        "league": {
+            "id": 293,
+            "name": "LCK",
+            "url": null,
+            "slug": "league-of-legends-lck-champions-korea",
+            "modified_at": "2021-01-06T15:41:48Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/293/lck_2021_logo-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10419,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-01T08:00:00Z",
+            "end_at": "2026-09-13T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026",
+            "modified_at": "2026-03-24T08:49:55Z",
+            "league_id": 293,
+            "season": null,
+            "full_name": "2026"
+        },
+        "scheduled_at": "2026-04-17T08:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 128221,
+                    "name": "ThunderTalk Gaming",
+                    "location": "CN",
+                    "slug": "tt",
+                    "modified_at": "2026-04-14T17:58:21Z",
+                    "acronym": "TT",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/128221/tt__2528_chinese_team_2529logo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 404,
+                    "name": "Oh My God",
+                    "location": "CN",
+                    "slug": "omg",
+                    "modified_at": "2026-03-29T17:01:42Z",
+                    "acronym": "OMG",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/404/fl_utn_xc.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278148,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420907,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278149,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420907,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278150,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420907,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-03-28T15:38:32Z",
+        "original_scheduled_at": "2026-04-17T09:00:00Z",
+        "begin_at": "2026-04-17T09:00:00Z",
+        "league_id": 294,
+        "streams_list": [
+            {
+                "main": false,
+                "language": "zh",
+                "embed_url": "https://liveshare.huya.com/iframe/lpl",
+                "official": false,
+                "raw_url": "https://www.huya.com/lpl"
+            },
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lplenglish",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lplenglish"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420907",
+            "opens_at": "2026-04-17T08:45:00.000000Z"
+        },
+        "serie_id": 10423,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 128221,
+                "score": 0
+            },
+            {
+                "team_id": 404,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "thundertalk-gaming-vs-oh-my-god-2026-04-17",
+        "tournament_id": 20589,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420907/low_latency_feed",
+            "opens_at": "2026-04-17T08:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20589,
+            "name": "Group Nirvana",
+            "type": "offline",
+            "country": "CN",
+            "begin_at": "2026-04-10T09:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-16T12:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026-group-nirvana",
+            "serie_id": 10423,
+            "modified_at": "2026-04-15T10:42:22Z",
+            "league_id": 294,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1420907,
+        "name": "TT vs OMG",
+        "league": {
+            "id": 294,
+            "name": "LPL",
+            "url": "http://www.lolesports.com/en_US/lpl-china",
+            "slug": "league-of-legends-lpl-china",
+            "modified_at": "2020-06-02T08:53:12Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/294/lpl_2020-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10423,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-04T07:00:00Z",
+            "end_at": "2026-06-14T14:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026",
+            "modified_at": "2026-03-29T10:03:16Z",
+            "league_id": 294,
+            "season": "Split 2",
+            "full_name": "Split 2 2026"
+        },
+        "scheduled_at": "2026-04-17T09:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 132531,
+                    "name": "Dplus KIA",
+                    "location": "KR",
+                    "slug": "dplus-kia",
+                    "modified_at": "2026-03-27T16:17:13Z",
+                    "acronym": "DK",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/132531/dplus_ki_alogo_profile.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/132531/800px_dplus_full_darkmode.png"
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 126061,
+                    "name": "T1",
+                    "location": "KR",
+                    "slug": "t1",
+                    "modified_at": "2026-03-27T16:17:10Z",
+                    "acronym": "T1",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/126061/t_oscq04.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 276900,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413445,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276901,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413445,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 276902,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1413445,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-03-24T08:49:56Z",
+        "original_scheduled_at": "2026-04-17T10:00:00Z",
+        "begin_at": "2026-04-17T10:00:00Z",
+        "league_id": 293,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lck",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lck"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413445",
+            "opens_at": "2026-04-17T09:45:00.000000Z"
+        },
+        "serie_id": 10419,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 132531,
+                "score": 0
+            },
+            {
+                "team_id": 126061,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "dplus-kia-vs-t1-2026-04-17",
+        "tournament_id": 20577,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1413445/low_latency_feed",
+            "opens_at": "2026-04-17T09:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20577,
+            "name": "Rounds 1-2",
+            "type": "offline",
+            "country": "KR",
+            "begin_at": "2026-04-01T08:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-31T13:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026-rounds-1-2",
+            "serie_id": 10419,
+            "modified_at": "2026-04-15T13:09:06Z",
+            "league_id": 293,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1413445,
+        "name": "DK vs T1",
+        "league": {
+            "id": 293,
+            "name": "LCK",
+            "url": null,
+            "slug": "league-of-legends-lck-champions-korea",
+            "modified_at": "2021-01-06T15:41:48Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/293/lck_2021_logo-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10419,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-01T08:00:00Z",
+            "end_at": "2026-09-13T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lck-champions-korea-2026",
+            "modified_at": "2026-03-24T08:49:55Z",
+            "league_id": 293,
+            "season": null,
+            "full_name": "2026"
+        },
+        "scheduled_at": "2026-04-17T10:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 641,
+                    "name": "Ninjas in Pyjamas",
+                    "location": "SE",
+                    "slug": "ninjas-in-pyjamas",
+                    "modified_at": "2026-03-29T16:56:27Z",
+                    "acronym": "NIP",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/641/ninjas_in_pyjamaslogo_profile.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 318,
+                    "name": "JD Gaming",
+                    "location": "CN",
+                    "slug": "qg-reapers",
+                    "modified_at": "2026-03-29T16:56:25Z",
+                    "acronym": "JDG",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/318/746px_jd_gaming_2021_full_allmode.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/318/746px_jd_gaming_2021_full_allmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278151,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420908,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278152,
+                "position": 2,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420908,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            },
+            {
+                "complete": false,
+                "id": 278153,
+                "position": 3,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1420908,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-03-28T15:38:50Z",
+        "original_scheduled_at": "2026-04-17T11:00:00Z",
+        "begin_at": "2026-04-17T11:00:00Z",
+        "league_id": 294,
+        "streams_list": [
+            {
+                "main": false,
+                "language": "zh",
+                "embed_url": "https://liveshare.huya.com/iframe/lpl",
+                "official": false,
+                "raw_url": "https://www.huya.com/lpl"
+            },
+            {
+                "main": true,
+                "language": "en",
+                "embed_url": "https://player.twitch.tv/?channel=lplenglish",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/lplenglish"
+            }
+        ],
+        "live": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420908",
+            "opens_at": "2026-04-17T10:45:00.000000Z"
+        },
+        "serie_id": 10423,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 641,
+                "score": 0
+            },
+            {
+                "team_id": 318,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 3,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "ninjas-in-pyjamas-vs-jd-gaming-2026-04-17",
+        "tournament_id": 20588,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1420908/low_latency_feed",
+            "opens_at": "2026-04-17T10:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20588,
+            "name": "Group Ascend",
+            "type": "offline",
+            "country": "CN",
+            "begin_at": "2026-04-04T07:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-05-17T15:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026-group-ascend",
+            "serie_id": 10423,
+            "modified_at": "2026-04-15T13:51:52Z",
+            "league_id": 294,
+            "prizepool": null,
+            "tier": "a",
+            "has_bracket": false,
+            "region": "ASIA",
+            "live_supported": true
+        },
+        "draw": false,
+        "id": 1420908,
+        "name": "NIP vs JDG",
+        "league": {
+            "id": 294,
+            "name": "LPL",
+            "url": "http://www.lolesports.com/en_US/lpl-china",
+            "slug": "league-of-legends-lpl-china",
+            "modified_at": "2020-06-02T08:53:12Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/294/lpl_2020-png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10423,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-04T07:00:00Z",
+            "end_at": "2026-06-14T14:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lpl-china-split-2-2026",
+            "modified_at": "2026-03-29T10:03:16Z",
+            "league_id": 294,
+            "season": "Split 2",
+            "full_name": "Split 2 2026"
+        },
+        "scheduled_at": "2026-04-17T11:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 134158,
+                    "name": "Skillcamp Esport",
+                    "location": "FR",
+                    "slug": "skillcamp-esport",
+                    "modified_at": "2026-04-06T11:03:02Z",
+                    "acronym": "SC",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/134158/skillcamplogo_square.png",
+                    "dark_mode_image_url": null
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 1449,
+                    "name": "Solary",
+                    "location": "FR",
+                    "slug": "solary",
+                    "modified_at": "2026-04-06T11:02:57Z",
+                    "acronym": "SLY",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/1449/123px_solarylogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/1449/solary_darkmode.png"
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278615,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445104,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-13T19:10:40Z",
+        "original_scheduled_at": "2026-04-17T16:00:00Z",
+        "begin_at": "2026-04-17T16:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 134158,
+                "score": 0
+            },
+            {
+                "team_id": 1449,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "skillcamp-esport-vs-solary-2026-04-17",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445104/low_latency_feed",
+            "opens_at": "2026-04-17T15:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445104,
+        "name": "SC vs SLY",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-17T16:00:00Z"
+    },
+    {
+        "opponents": [
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 136019,
+                    "name": "Galions",
+                    "location": "FR",
+                    "slug": "galions",
+                    "modified_at": "2026-04-06T11:02:49Z",
+                    "acronym": "GAL",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/136019/galionslogo_square.png",
+                    "dark_mode_image_url": "https://cdn-api.pandascore.co/dark_images/team/dark_image/136019/galions_darkmode.png"
+                }
+            },
+            {
+                "type": "Team",
+                "opponent": {
+                    "id": 137898,
+                    "name": "TLN Pirates",
+                    "location": "",
+                    "slug": "tln-pirates",
+                    "modified_at": "2026-04-06T11:03:01Z",
+                    "acronym": "TLNP",
+                    "image_url": "https://cdn-api.pandascore.co/images/team/image/137898/tln_pirates_2026_allmode.png",
+                    "dark_mode_image_url": null
+                }
+            }
+        ],
+        "games": [
+            {
+                "complete": false,
+                "id": 278616,
+                "position": 1,
+                "status": "not_started",
+                "length": null,
+                "finished": false,
+                "match_id": 1445105,
+                "begin_at": null,
+                "detailed_stats": true,
+                "end_at": null,
+                "forfeit": false,
+                "winner": {
+                    "id": null,
+                    "type": "Team"
+                },
+                "winner_type": "Team"
+            }
+        ],
+        "modified_at": "2026-04-13T19:10:51Z",
+        "original_scheduled_at": "2026-04-17T17:00:00Z",
+        "begin_at": "2026-04-17T17:00:00Z",
+        "league_id": 4292,
+        "streams_list": [
+            {
+                "main": true,
+                "language": "fr",
+                "embed_url": "https://player.twitch.tv/?channel=otplol_",
+                "official": true,
+                "raw_url": "https://www.twitch.tv/otplol_"
+            }
+        ],
+        "live": {
+            "supported": false,
+            "url": null,
+            "opens_at": null
+        },
+        "serie_id": 10489,
+        "videogame_title": null,
+        "forfeit": false,
+        "winner_id": null,
+        "results": [
+            {
+                "team_id": 136019,
+                "score": 0
+            },
+            {
+                "team_id": 137898,
+                "score": 0
+            }
+        ],
+        "status": "not_started",
+        "end_at": null,
+        "videogame_version": null,
+        "number_of_games": 1,
+        "rescheduled": false,
+        "winner_type": "Team",
+        "winner": null,
+        "slug": "galions-vs-tln-pirates-2026-04-17",
+        "tournament_id": 20711,
+        "low_latency_feed": {
+            "supported": true,
+            "url": "wss://live.pandascore.co/matches/1445105/low_latency_feed",
+            "opens_at": "2026-04-17T16:45:00.000000Z"
+        },
+        "detailed_stats": true,
+        "tournament": {
+            "id": 20711,
+            "name": "Regular Season",
+            "type": "online",
+            "country": "FR",
+            "begin_at": "2026-04-08T16:00:00Z",
+            "detailed_stats": true,
+            "end_at": "2026-04-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026-regular-season",
+            "serie_id": 10489,
+            "modified_at": "2026-04-10T20:24:37Z",
+            "league_id": 4292,
+            "prizepool": null,
+            "tier": "c",
+            "has_bracket": false,
+            "region": "WEU",
+            "live_supported": false
+        },
+        "draw": false,
+        "id": 1445105,
+        "name": "GAL vs TLNP",
+        "league": {
+            "id": 4292,
+            "name": "LFL",
+            "url": "http://www.lollfl.com/",
+            "slug": "league-of-legends-lfl",
+            "modified_at": "2020-02-15T13:00:22Z",
+            "image_url": "https://cdn-api.pandascore.co/images/league/image/4292/1200px-LFL_Logo_2020.png"
+        },
+        "match_type": "best_of",
+        "videogame": {
+            "id": 1,
+            "name": "LoL",
+            "slug": "league-of-legends"
+        },
+        "game_advantage": null,
+        "serie": {
+            "id": 10489,
+            "name": "",
+            "year": 2026,
+            "begin_at": "2026-04-08T16:00:00Z",
+            "end_at": "2026-06-29T22:00:00Z",
+            "winner_id": null,
+            "winner_type": "Team",
+            "slug": "league-of-legends-lfl-spring-2026",
+            "modified_at": "2026-04-06T11:10:19Z",
+            "league_id": 4292,
+            "season": "Spring",
+            "full_name": "Spring 2026"
+        },
+        "scheduled_at": "2026-04-17T17:00:00Z"
+    }
+]

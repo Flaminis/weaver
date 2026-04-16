@@ -1,0 +1,30 @@
+{
+  "best_trial": 199,
+  "best_logloss": 0.5179206874089644,
+  "cv_auc": 0.8063946029255393,
+  "best_params": {
+    "num_leaves": 15,
+    "learning_rate": 0.02721045588424206,
+    "n_estimators": 1355,
+    "min_child_samples": 27,
+    "reg_alpha": 9.959937125374573,
+    "reg_lambda": 0.015497160267051807,
+    "subsample": 0.5558957279074398,
+    "colsample_bytree": 0.5202179745186736,
+    "max_depth": 9
+  },
+  "n_trials": 200,
+  "n_games": 7574,
+  "n_rows": 250993,
+  "features": [
+    "game_minute",
+    "kill_diff",
+    "tower_diff",
+    "drake_diff",
+    "baron_diff",
+    "inhib_diff",
+    "herald_diff",
+    "total_kills",
+    "total_objectives"
+  ]
+}

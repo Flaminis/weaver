@@ -253,17 +253,39 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
               <span className="font-bold w-10 shrink-0" style={{color: c}}>{ev.etype.toUpperCase().slice(0,5)}</span>
               <span className="text-[#444] w-10 shrink-0">[{ev.clock}]</span>
               <span className="truncate flex-1 min-w-0" style={{color: c + 'b0'}}>{ev.desc}</span>
-              {showBuyIntent && (
-                  <div className="w-[108px] shrink-0 text-right leading-tight" title={buyTitle}>
+              {showBuyIntent && (() => {
+                const pre = ev.pre_event_mid != null
+                  ? (isBuyA ? ev.pre_event_mid : 1 - ev.pre_event_mid) : null
+                const fair = ev.p_fair != null
+                  ? (isBuyA ? ev.p_fair : 1 - ev.p_fair) : null
+                return (
+                  <div className="w-[120px] shrink-0 text-right leading-tight" title={buyTitle}>
                     <div className="text-[8px] font-bold" style={{ color: isBuyA ? cA : cB }}>
                       Buy {isBuyA ? 'A' : 'B'} · {(isBuyA ? teamA : teamB).split(/\s+/)[0]?.slice(0, 10) || '?'}
                     </div>
-                    {limPx != null && (
-                      <div className="text-[7px] text-[#999]">≤{(limPx * 100).toFixed(1)}¢</div>
+                    {pre != null && fair != null && (
+                      <div className="text-[7px]">
+                        <span className="text-[#777]">{(pre * 100).toFixed(0)}%</span>
+                        <span className="text-[#555]">→</span>
+                        <span className={fair > pre ? 'text-green-400' : fair < pre ? 'text-red-400' : 'text-[#777]'}>{(fair * 100).toFixed(0)}%</span>
+                      </div>
                     )}
                   </div>
-                )}
-              <span className="text-[#555] w-10 text-right shrink-0" title="Mid at signal">{(ev.mid*100).toFixed(1)}¢</span>
+                )
+              })()}
+              {(() => {
+                const buyPx = ev.attempt_ref_px != null && ev.attempt_ref_px > 0
+                  ? ev.attempt_ref_px
+                  : (isBuyA ? ev.buy_price_a : ev.buy_price_b)
+                return (
+                  <span className="text-[#666] w-12 text-right shrink-0 tabular-nums" title={`Buy price: ${(buyPx * 100).toFixed(1)}¢${limPx != null ? ` | Limit: ≤${(limPx * 100).toFixed(1)}¢` : ''}`}>
+                    {buyPx > 0 ? `${(buyPx * 100).toFixed(1)}¢` : `${(ev.mid * 100).toFixed(1)}¢`}
+                  </span>
+                )
+              })()}
+              {!showBuyIntent && (
+                <span className="text-[#555] w-12 text-right shrink-0">{(ev.mid*100).toFixed(1)}¢</span>
+              )}
               <Badge variant="outline" className={`text-[6px] h-2.5 px-1 shrink-0 ${eventActionBadge(ev).className}`} title={
                 ev.action === 'TRADE' && ev.trade_exec === 'dry_run'
                   ? 'Paper trade — no Polymarket order (run with --live for real orders)'
@@ -279,7 +301,7 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                             ? 'Legacy row: signal only, execution not recorded'
                             : undefined
               }>
-                {eventActionBadge(ev).label}
+                {eventActionBadge(ev).label}{ev.signal_size != null && ev.signal_size > 0 && ev.action === 'TRADE' ? ` $${Math.round(ev.signal_size)}` : ''}
               </Badge>
               <span className="text-[#333] shrink-0">{isOpen ? '▾' : '▸'}</span>
             </div>
