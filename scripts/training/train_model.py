@@ -52,25 +52,66 @@ FEATURES_FULL = [
     "total_objectives",
 ]
 
-FEATURES_NO_GOLD = [f for f in FEATURES_FULL if f != "gold_diff"]
+# Production features match what LLF provides live: no gold, no heralds.
+# Momentum features (kill_diff_delta_3m, peak_kill_diff, lead_retraction,
+# obj_diff_delta_3m) capture trajectory, not just snapshot.
+# comp_diff is blue_team_avg_champ_winrate - red_team_avg_champ_winrate,
+# LOO-adjusted and shrunk toward the global mean.
+FEATURES_LIVE = [
+    "game_minute",
+    "kill_diff",
+    "tower_diff",
+    "drake_diff",
+    "baron_diff",
+    "inhib_diff",
+    "total_kills",
+    "total_objectives",
+    # Momentum
+    "kill_diff_delta_3m",
+    "obj_diff_delta_3m",
+    "peak_kill_diff",
+    "lead_retraction",
+    # Composition
+    "comp_diff",
+]
 
-# Production model uses FEATURES_NO_GOLD because LLF doesn't provide gold data.
-FEATURES = FEATURES_NO_GOLD
+FEATURES = FEATURES_LIVE
 
-# Monotonicity constraints: more kills/towers/drakes/barons/inhibs/heralds for blue
-# must ALWAYS increase P(blue_wins). game_minute and totals are unconstrained.
-# Order matches FEATURES_NO_GOLD above.
+# Monotonicity: more diff in blue's favor → higher P(blue wins).
+# Momentum features are unconstrained — "delta" can legitimately cut either
+# way conditional on other features (e.g. losing a lead near minute 30 is
+# different from losing it at minute 5). Totals are unconstrained too.
+# comp_diff is monotone +1: better comp for blue must not decrease P(blue).
 MONOTONE_CONSTRAINTS = [
-    0,   # game_minute — no direction
-    1,   # kill_diff — more kills → higher win prob
+    0,   # game_minute
+    1,   # kill_diff
     1,   # tower_diff
     1,   # drake_diff
     1,   # baron_diff
     1,   # inhib_diff
-    1,   # herald_diff
-    0,   # total_kills — no direction
-    0,   # total_objectives — no direction
+    0,   # total_kills
+    0,   # total_objectives
+    0,   # kill_diff_delta_3m
+    0,   # obj_diff_delta_3m
+    0,   # peak_kill_diff
+    0,   # lead_retraction
+    1,   # comp_diff — blue comp stronger → higher P(blue wins)
 ]
+
+# Baseline subset for A/B comparison — same features as the currently-deployed
+# model. If the new FEATURES fails to beat this on CV log-loss, we don't ship.
+FEATURES_BASELINE = [
+    "game_minute",
+    "kill_diff",
+    "tower_diff",
+    "drake_diff",
+    "baron_diff",
+    "inhib_diff",
+    "herald_diff",
+    "total_kills",
+    "total_objectives",
+]
+MONOTONE_BASELINE = [0, 1, 1, 1, 1, 1, 1, 0, 0]
 
 LABEL = "blue_won"
 GROUP = "game_id"
@@ -89,14 +130,15 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-def objective(trial: optuna.Trial, X: np.ndarray, y: np.ndarray, groups: np.ndarray) -> float:
+def objective(trial: optuna.Trial, X: np.ndarray, y: np.ndarray, groups: np.ndarray,
+              monotone: list[int]) -> float:
     params = {
         "objective": "binary",
         "metric": "binary_logloss",
         "verbosity": -1,
         "boosting_type": "gbdt",
         "seed": SEED,
-        "monotone_constraints": MONOTONE_CONSTRAINTS,
+        "monotone_constraints": monotone,
         "num_leaves": trial.suggest_int("num_leaves", 15, 256),
         "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.3, log=True),
         "n_estimators": trial.suggest_int("n_estimators", 100, 2000),
@@ -256,76 +298,111 @@ def print_event_impact_examples(model: lgb.LGBMClassifier):
         print(f"  {label:<55} {p_before:>8.4f} {p_after:>8.4f} {delta:>+8.4f}")
 
 
-def main():
-    df = load_data()
-    X = df[FEATURES].values
+def train_one(label: str, features: list[str], monotone: list[int], df: pd.DataFrame,
+              study_name: str, output_stem: str, n_trials: int = N_TRIALS) -> dict:
+    """Run Optuna + final train for one feature set. Returns summary dict."""
+    X = df[features].values
     y = df[LABEL].values
     groups = df[GROUP].values
 
-    print(f"[train] features: {FEATURES}")
-    print(f"[train] label distribution: {y.mean():.3f} (blue win rate across all frames)")
-    print(f"[train] starting Optuna search ({N_TRIALS} trials, {N_FOLDS}-fold group CV)...")
+    print(f"\n{'='*70}\n[{label}] features ({len(features)}): {features}")
+    print(f"[{label}] {len(df):,} rows, {df[GROUP].nunique():,} games, blue rate={y.mean():.3f}")
+    print(f"[{label}] Optuna: {n_trials} trials, {N_FOLDS}-fold group CV")
 
     storage = optuna.storages.RDBStorage(OPTUNA_DB)
     try:
-        optuna.delete_study(study_name=STUDY_NAME, storage=storage)
+        optuna.delete_study(study_name=study_name, storage=storage)
     except KeyError:
         pass
     study = optuna.create_study(
-        study_name=STUDY_NAME,
+        study_name=study_name,
         direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=SEED),
         storage=storage,
     )
-    print(f"[train] Optuna dashboard: optuna-dashboard sqlite:///{MODELS_DIR / 'optuna_study.db'}")
-    study.optimize(lambda trial: objective(trial, X, y, groups), n_trials=N_TRIALS, show_progress_bar=True)
-
+    study.optimize(
+        lambda trial: objective(trial, X, y, groups, monotone),
+        n_trials=n_trials, show_progress_bar=True,
+    )
     best = study.best_trial
-    print(f"\n[train] best trial #{best.number}: log-loss={best.value:.5f}")
-    print(f"[train] best params: {json.dumps(best.params, indent=2)}")
+    print(f"\n[{label}] best trial #{best.number}: CV log-loss = {best.value:.5f}")
 
     final_params = {
-        "objective": "binary",
-        "metric": "binary_logloss",
-        "verbosity": -1,
-        "boosting_type": "gbdt",
-        "seed": SEED,
-        "monotone_constraints": MONOTONE_CONSTRAINTS,
+        "objective": "binary", "metric": "binary_logloss", "verbosity": -1,
+        "boosting_type": "gbdt", "seed": SEED,
+        "monotone_constraints": monotone,
         **best.params,
     }
 
-    print("\n[train] calibration analysis (group CV with best params):")
+    print(f"\n[{label}] calibration analysis:")
     temp_model = lgb.LGBMClassifier(**final_params)
     logloss, auc, _, _ = calibration_analysis(temp_model, X, y, groups)
 
-    print("\n[train] training final model on full dataset...")
+    print(f"\n[{label}] training final model on full dataset...")
     model = train_final_model(final_params, X, y)
 
-    fi = pd.Series(model.feature_importances_, index=FEATURES).sort_values(ascending=False)
-    print("\n  Feature Importance (split count):")
+    fi = pd.Series(model.feature_importances_, index=features).sort_values(ascending=False)
+    print(f"\n  [{label}] Feature Importance (split count):")
     for feat, imp in fi.items():
         bar = "█" * int(imp / fi.max() * 30)
-        print(f"    {feat:<20} {imp:>6}  {bar}")
+        print(f"    {feat:<22} {imp:>6}  {bar}")
 
-    print_event_impact_examples(model)
-
-    model_path = MODELS_DIR / "winprob_lgbm.joblib"
-    joblib.dump({"model": model, "features": FEATURES, "params": final_params}, model_path)
-    print(f"\n[train] model saved to {model_path}")
+    model_path = MODELS_DIR / f"{output_stem}.joblib"
+    joblib.dump({"model": model, "features": features, "params": final_params}, model_path)
+    print(f"\n[{label}] saved model → {model_path}")
 
     study_data = {
-        "best_trial": best.number,
-        "best_logloss": best.value,
-        "cv_auc": auc,
-        "best_params": best.params,
-        "n_trials": N_TRIALS,
-        "n_games": int(df[GROUP].nunique()),
-        "n_rows": len(df),
-        "features": FEATURES,
+        "label": label, "best_trial": best.number, "best_logloss": best.value,
+        "cv_auc": auc, "best_params": best.params, "n_trials": n_trials,
+        "n_games": int(df[GROUP].nunique()), "n_rows": len(df),
+        "features": features, "monotone_constraints": monotone,
     }
-    study_path = MODELS_DIR / "study.json"
+    study_path = MODELS_DIR / f"{output_stem}_study.json"
     study_path.write_text(json.dumps(study_data, indent=2))
-    print(f"[train] study results saved to {study_path}")
+    return study_data
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", choices=("ab", "baseline", "live"), default="ab",
+                    help="ab=train both for comparison, baseline=just old feats, live=just new feats")
+    ap.add_argument("--trials", type=int, default=N_TRIALS)
+    args = ap.parse_args()
+
+    df = load_data()
+    summaries = []
+
+    if args.mode in ("ab", "baseline"):
+        summaries.append(train_one(
+            label="baseline", features=FEATURES_BASELINE, monotone=MONOTONE_BASELINE,
+            df=df, study_name=f"{STUDY_NAME}_baseline",
+            output_stem="winprob_lgbm_baseline", n_trials=args.trials,
+        ))
+
+    if args.mode in ("ab", "live"):
+        summaries.append(train_one(
+            label="live_v2", features=FEATURES_LIVE, monotone=MONOTONE_CONSTRAINTS,
+            df=df, study_name=f"{STUDY_NAME}_live", output_stem="winprob_lgbm_v2",
+            n_trials=args.trials,
+        ))
+
+    if len(summaries) == 2:
+        b, v = summaries
+        print(f"\n{'='*70}\n[A/B COMPARISON]")
+        print(f"  {'label':<15}{'CV log-loss':>14}{'CV AUC':>10}{'features':>11}")
+        for s in summaries:
+            print(f"  {s['label']:<15}{s['best_logloss']:>14.5f}{s['cv_auc']:>10.5f}{len(s['features']):>11}")
+        d_ll = v["best_logloss"] - b["best_logloss"]
+        d_auc = v["cv_auc"] - b["cv_auc"]
+        print(f"\n  Δ log-loss (live − baseline): {d_ll:+.5f}  ({'BETTER' if d_ll < 0 else 'worse'})")
+        print(f"  Δ AUC      (live − baseline): {d_auc:+.5f}  ({'BETTER' if d_auc > 0 else 'worse'})")
+        if d_ll < -0.001 and d_auc > 0.001:
+            print("\n  → New model beats baseline. Safe to promote (update event_impact.py + deploy).")
+        elif d_ll < 0 and d_auc > 0:
+            print("\n  → New model marginally better. Look at calibration + feature importance before promoting.")
+        else:
+            print("\n  → New model does NOT beat baseline. Do not promote. Investigate features.")
 
 
 if __name__ == "__main__":

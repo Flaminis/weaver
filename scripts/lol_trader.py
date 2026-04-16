@@ -35,7 +35,11 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import lol_trader_config as cfg
-from lol_signal import EventType, LolEvent, Signal, SignalModel, _STAT_KEY_MAP, _get_impact_model
+from lol_signal import (
+    EventType, LolEvent, Signal, SignalModel,
+    _STAT_KEY_MAP, _get_impact_model,
+    safe_predict_win_prob, safe_predict_impact_from_llf,
+)
 from lol_risk import Position, RiskManager
 from polymarket.client import poly_client
 from polymarket.ws_prices import BookState, MarketWebSocket
@@ -85,6 +89,34 @@ def _fill_size_plausible(fill_size: float, expected_shares: float) -> bool:
 # ── Data classes ────────────────────────────────────────────────────────
 
 
+def _norm_llf(d: dict | None) -> dict[str, int]:
+    """LLF scoreboard stats → canonical dict accepted by FeatureVectorBuilder.
+    LLF uses 'nashors' and 'inhibitors'; the builder accepts either shape."""
+    if not d:
+        return {"kills": 0, "towers": 0, "drakes": 0, "barons": 0, "inhibs": 0}
+    return {
+        "kills":  int(d.get("kills", 0) or 0),
+        "towers": int(d.get("towers", 0) or 0),
+        "drakes": int(d.get("drakes", 0) or 0),
+        "barons": int(d.get("nashors", d.get("barons", 0)) or 0),
+        "inhibs": int(d.get("inhibitors", d.get("inhibs", 0)) or 0),
+    }
+
+
+def _scoreboard_changed(prev_entry: dict, blue_now: dict, red_now: dict) -> bool:
+    """True if any tracked stat differs between prev history entry and now.
+    Keeps state_history from bloating with identical snapshots."""
+    keys = ("kills", "towers", "drakes", "nashors", "inhibitors")
+    pb = prev_entry.get("blue", {}) or {}
+    pr = prev_entry.get("red", {}) or {}
+    for k in keys:
+        if (pb.get(k, 0) or 0) != (blue_now.get(k, 0) or 0):
+            return True
+        if (pr.get(k, 0) or 0) != (red_now.get(k, 0) or 0):
+            return True
+    return False
+
+
 @dataclass
 class MarketSlot:
     """One Polymarket market for a match (series winner, game 1, game 2, etc.)."""
@@ -120,6 +152,13 @@ class LiveMatch:
     _current_game_num: int = 0
     _price_log: list[tuple[float, float]] = field(default_factory=list)
     _model_prob_log: list[tuple[float, float]] = field(default_factory=list)
+    # Per-game rolling scoreboard history for momentum features (v2 model).
+    # Keyed by game_id → list of (ts_sec, {"blue": {kills,...}, "red": {kills,...}}).
+    # Trimmed to last 15 minutes to bound memory.
+    _state_history: dict[int, list[tuple[float, dict]]] = field(default_factory=dict)
+    # Champion picks per game — {game_id: {team_id: [list of 5 champion slugs by role order]}}.
+    # Populated from LLF draft.picks on first scoreboard with complete draft.
+    _champion_picks: dict[int, dict[int, list[str]]] = field(default_factory=dict)
     # Gamma event metadata
     gamma: dict = field(default_factory=dict)
     # LLF debug
@@ -807,6 +846,8 @@ class LoLTrader:
         """Score the win-prob model on the current game state and append
         (now, p_a) to match._model_prob_log. De-duped so rapid back-to-back
         calls (LLF update + periodic tick) don't stack near-identical points.
+        Passes state_history + champion picks so v2 momentum/comp features
+        see the full runtime context; v1 model ignores them via is_v2=False.
         """
         if not match.team_a_id or not match.team_b_id:
             return
@@ -818,15 +859,19 @@ class LoLTrader:
         if match._model_prob_log and (now - match._model_prob_log[-1][0]) < cfg.MODEL_RESCORE_DEDUP_SEC:
             return
         try:
-            eim = _get_impact_model()
-            _n = lambda d: {
-                "kills": d.get("kills", 0), "towers": d.get("towers", 0),
-                "drakes": d.get("drakes", 0), "barons": d.get("nashors", 0),
-                "inhibs": d.get("inhibitors", 0), "heralds": d.get("heralds", 0),
-            }
             is_a_blue = str(ta_st.get("side", "")).lower().startswith("blu")
-            p_a = eim.predict_win_prob(
-                game_sec / 60.0, _n(ta_st), _n(tb_st), is_blue=is_a_blue,
+            gid = next((g.get("id", 0) for g in match.games
+                        if g.get("status") == "running"), 0) or next(iter(match._state_history), 0)
+            history = match._state_history.get(gid)
+            picks = match._champion_picks.get(gid, {})
+            ta_champs = picks.get(match.team_a_id)
+            tb_champs = picks.get(match.team_b_id)
+            p_a = safe_predict_win_prob(
+                game_sec / 60.0,
+                _norm_llf(ta_st), _norm_llf(tb_st),
+                is_blue=is_a_blue,
+                state_history=history, current_ts=now,
+                team_champs=ta_champs, opp_champs=tb_champs,
             )
         except Exception as exc:
             log.debug("[MODEL] rescore failed for %s: %s", match.name, exc)
@@ -891,6 +936,39 @@ class LoLTrader:
 
         prev = match._prev_teams.get(gid)
         match._prev_teams[gid] = curr
+
+        # Append to state history (for v2 momentum features). Keyed by game_id.
+        # Store in blue/red keys (not team_id) so FeatureVectorBuilder can use
+        # it directly. team side string "blue"/"red" comes from LLF teams[].
+        if match.team_a_id and match.team_b_id:
+            ta = curr.get(match.team_a_id)
+            tb = curr.get(match.team_b_id)
+            if ta and tb:
+                ta_blue = str(ta.get("side", "")).lower().startswith("blu")
+                blue_st = ta if ta_blue else tb
+                red_st = tb if ta_blue else ta
+                hist = match._state_history.setdefault(gid, [])
+                # De-dup: skip if nothing changed vs last entry (avoids bloat
+                # from rapid LLF updates that don't change the scoreboard).
+                if not hist or _scoreboard_changed(hist[-1][1], blue_st, red_st):
+                    hist.append((time.time(), {"blue": blue_st, "red": red_st}))
+                    # Trim: keep last ~15 min at ≤ 1 entry per 5s → cap at 200
+                    if len(hist) > 200:
+                        match._state_history[gid] = hist[-200:]
+
+        # Populate champion picks on first scoreboard with complete draft.
+        if gid not in match._champion_picks:
+            draft = (game.get("draft") or {}).get("picks") or []
+            if len(draft) >= 10:
+                by_team: dict[int, list[str]] = {}
+                for p in draft:
+                    by_team.setdefault(p.get("team_id", 0), []).append(p.get("champion_slug", ""))
+                # Only commit if both teams have 5 picks each
+                if (len(by_team.get(match.team_a_id, [])) == 5
+                        and len(by_team.get(match.team_b_id, [])) == 5):
+                    match._champion_picks[gid] = by_team
+                    log.info("[DRAFT] %s G%d: A=%s B=%s", match.name, pos,
+                             by_team[match.team_a_id], by_team[match.team_b_id])
 
         if status == "running":
             self._log_match_model_prob(match, curr, game_sec)
@@ -976,6 +1054,14 @@ class LoLTrader:
 
         recent_move = book.recent_move(cfg.PRE_EVENT_WINDOW_SEC)
 
+        # Look up v2 context for this match+game so momentum + comp features
+        # can evaluate. signal_model passes these into event_impact.
+        _gid_for_sig = next((g.get("id", 0) for g in match.games
+                             if g.get("status") == "running"), 0)
+        _sig_history = match._state_history.get(_gid_for_sig)
+        _sig_picks = match._champion_picks.get(_gid_for_sig, {})
+        _sig_opp_id = match.team_b_id if event.team_id == match.team_a_id else match.team_a_id
+
         signal, reason = match.signal_model.on_event(
             event=event,
             mid_a=mid_a,
@@ -983,6 +1069,9 @@ class LoLTrader:
             ask_a=ask_a,
             spread=spread,
             prev_teams=prev_teams,
+            state_history=_sig_history,
+            acting_champs=_sig_picks.get(event.team_id),
+            opp_champs=_sig_picks.get(_sig_opp_id),
         )
 
         team_name = match.team_a if event.team_id == match.team_a_id else match.team_b
@@ -1011,12 +1100,19 @@ class LoLTrader:
                 opp_after = {**opp_before}
                 is_blue = str(acting_before.get("side", "")).lower().startswith("blu")
                 try:
-                    eim = _get_impact_model()
-                    impact, _p_b, _p_a = eim.predict_impact_from_llf(
+                    gid_for_event = next((g.get("id", 0) for g in match.games
+                                          if g.get("status") == "running"), 0)
+                    history = match._state_history.get(gid_for_event)
+                    picks = match._champion_picks.get(gid_for_event, {})
+                    acting_champs = picks.get(event.team_id)
+                    opp_champs = picks.get(opp_id)
+                    impact, _p_b, _p_a = safe_predict_impact_from_llf(
                         game_minute=event.game_timer_sec / 60.0,
                         team_before=acting_before, team_after=acting_after,
                         opp_before=opp_before, opp_after=opp_after,
                         is_blue=is_blue,
+                        state_history=history, current_ts=event.ts,
+                        team_champs=acting_champs, opp_champs=opp_champs,
                     )
                     model_dir = "buy_a" if event.team_id == match.team_a_id else "buy_b"
                     pre_event_mid_a = mid_a - recent_move

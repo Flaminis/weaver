@@ -51,6 +51,15 @@ LLF_RECV_TIMEOUT = 300
 MODEL_RESCORE_SEC = 5           # Re-score every N seconds for each live game
 MODEL_RESCORE_DEDUP_SEC = 1.5   # Skip append if last log entry is within this gap
 
+# ── Model selection ────────────────────────────────────────────────────
+# "v2" = winprob_lgbm_v2.joblib (momentum + champion features, 13 inputs)
+# "v1" = winprob_lgbm.joblib (baseline, 9 inputs)
+# Emergency rollback: flip to "v1" → systemctl restart lol-trade. No deploy,
+# no model rebuild. Both files live in data/models/ side by side.
+
+PRIMARY_MODEL = "v2"            # Drives all trade sizing / impact decisions
+MODEL_FALLBACK_TO_V1_ON_ERROR = True  # If v2 inference throws, log and retry on v1
+
 # ── Combo detection (signal v2) ─────────────────────────────────────────
 
 COMBO_WINDOW_SEC = 30           # Events within 30s are part of same combo
