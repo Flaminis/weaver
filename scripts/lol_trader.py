@@ -35,7 +35,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import lol_trader_config as cfg
-from lol_signal import EventType, LolEvent, Signal, SignalModel
+from lol_signal import EventType, LolEvent, Signal, SignalModel, _STAT_KEY_MAP, _get_impact_model
 from lol_risk import Position, RiskManager
 from polymarket.client import poly_client
 from polymarket.ws_prices import BookState, MarketWebSocket
@@ -119,6 +119,7 @@ class LiveMatch:
     all_markets: list[MarketSlot] = field(default_factory=list)
     _current_game_num: int = 0
     _price_log: list[tuple[float, float]] = field(default_factory=list)
+    _model_prob_log: list[tuple[float, float]] = field(default_factory=list)
     # Gamma event metadata
     gamma: dict = field(default_factory=dict)
     # LLF debug
@@ -258,6 +259,7 @@ class LoLTrader:
             asyncio.create_task(self._exit_loop()),
             asyncio.create_task(self._market_refresh_loop()),
             asyncio.create_task(self._rest_book_loop()),
+            asyncio.create_task(self._model_rescore_loop()),
         ]
         self._llf_tasks: dict[int, asyncio.Task] = {}
         self._start_llf_for_priority_matches()
@@ -781,6 +783,82 @@ class LoLTrader:
                     pass
                 log.info("%s WS closed", tag)
 
+    # ── Live game clock + periodic model re-score ───────────────────────
+
+    def _compute_live_game_sec(self, timer_obj: dict) -> int:
+        """Current in-game seconds. Advances past the last LLF timer payload
+        when the clock is running, so game_minute keeps ticking between
+        scoreboard updates."""
+        base_t = timer_obj.get("timer", 0) or 0
+        if not timer_obj.get("paused", True) and timer_obj.get("issued_at"):
+            try:
+                dt = datetime.fromisoformat(timer_obj["issued_at"].replace("Z", "+00:00"))
+                base_t += (datetime.now(timezone.utc) - dt).total_seconds()
+            except Exception:
+                pass
+        return max(0, int(base_t))
+
+    def _log_match_model_prob(
+        self,
+        match: "LiveMatch",
+        curr_teams: dict[int, dict],
+        game_sec: int,
+    ) -> None:
+        """Score the win-prob model on the current game state and append
+        (now, p_a) to match._model_prob_log. De-duped so rapid back-to-back
+        calls (LLF update + periodic tick) don't stack near-identical points.
+        """
+        if not match.team_a_id or not match.team_b_id:
+            return
+        ta_st = curr_teams.get(match.team_a_id)
+        tb_st = curr_teams.get(match.team_b_id)
+        if not ta_st or not tb_st:
+            return
+        now = time.time()
+        if match._model_prob_log and (now - match._model_prob_log[-1][0]) < cfg.MODEL_RESCORE_DEDUP_SEC:
+            return
+        try:
+            eim = _get_impact_model()
+            _n = lambda d: {
+                "kills": d.get("kills", 0), "towers": d.get("towers", 0),
+                "drakes": d.get("drakes", 0), "barons": d.get("nashors", 0),
+                "inhibs": d.get("inhibitors", 0), "heralds": d.get("heralds", 0),
+            }
+            is_a_blue = str(ta_st.get("side", "")).lower().startswith("blu")
+            p_a = eim.predict_win_prob(
+                game_sec / 60.0, _n(ta_st), _n(tb_st), is_blue=is_a_blue,
+            )
+        except Exception as exc:
+            log.debug("[MODEL] rescore failed for %s: %s", match.name, exc)
+            return
+        match._model_prob_log.append((now, round(p_a, 4)))
+        if len(match._model_prob_log) > 5000:
+            match._model_prob_log = match._model_prob_log[-2500:]
+
+    async def _model_rescore_loop(self):
+        """Re-score the win-prob model every MODEL_RESCORE_SEC for each
+        running game so P(win) drifts with game_minute even when LLF sends
+        no updates (e.g. slow lane phase between kills).
+        Time is itself a signal: 5-0 at min 1 is not 5-0 at min 30.
+        """
+        while self._running:
+            await asyncio.sleep(cfg.MODEL_RESCORE_SEC)
+            for m in self.matches.values():
+                if not m.active or not m.games:
+                    continue
+                running = next((g for g in m.games if g.get("status") == "running"), None)
+                if not running:
+                    continue
+                timer_obj = running.get("timer", {})
+                if timer_obj.get("paused", True):
+                    continue
+                gid = running.get("id", 0)
+                curr = m._prev_teams.get(gid)
+                if not curr:
+                    continue
+                game_sec = self._compute_live_game_sec(timer_obj)
+                self._log_match_model_prob(m, curr, game_sec)
+
     # ── Game state diffing ──────────────────────────────────────────────
 
     async def _process_game_update(self, match: LiveMatch, game: dict):
@@ -802,14 +880,7 @@ class LoLTrader:
                          match.name, old_gn, pos, new_mkt.market_type,
                          new_mkt.token_a[:12], new_mkt.token_b[:12])
 
-        base_t = timer_obj.get("timer", 0) or 0
-        if not timer_obj.get("paused", True) and timer_obj.get("issued_at"):
-            try:
-                dt = datetime.fromisoformat(timer_obj["issued_at"].replace("Z", "+00:00"))
-                base_t += (datetime.now(timezone.utc) - dt).total_seconds()
-            except Exception:
-                pass
-        game_sec = max(0, int(base_t))
+        game_sec = self._compute_live_game_sec(timer_obj)
 
         curr = {t["id"]: {
             "id": t.get("id", 0), "side": t.get("side", "?"),
@@ -820,6 +891,9 @@ class LoLTrader:
 
         prev = match._prev_teams.get(gid)
         match._prev_teams[gid] = curr
+
+        if status == "running":
+            self._log_match_model_prob(match, curr, game_sec)
 
         if prev is None:
             # Only log INIT for the currently running game, skip finished ones
@@ -921,6 +995,43 @@ class LoLTrader:
         buy_price_a = round(ask_a, 4)
         buy_price_b = round(1.0 - bid_a, 4) if bid_a > 0 else 0
 
+        # Score the win-prob model for EVERY tradeable event — including ones
+        # that will get gated on spread/price-band/near-resolved — so the
+        # dashboard can show the model's before→after delta regardless of
+        # whether the bot traded. Time + state both move the line, so this
+        # is informative even when no BUY fires.
+        model_view: dict | None = None
+        if event.etype in _STAT_KEY_MAP and prev_teams:
+            acting_before = prev_teams.get(event.team_id)
+            opp_id = match.team_b_id if event.team_id == match.team_a_id else match.team_a_id
+            opp_before = prev_teams.get(opp_id)
+            if acting_before and opp_before:
+                stat_key = _STAT_KEY_MAP[event.etype]
+                acting_after = {**acting_before, stat_key: event.new_value}
+                opp_after = {**opp_before}
+                is_blue = str(acting_before.get("side", "")).lower().startswith("blu")
+                try:
+                    eim = _get_impact_model()
+                    impact, _p_b, _p_a = eim.predict_impact_from_llf(
+                        game_minute=event.game_timer_sec / 60.0,
+                        team_before=acting_before, team_after=acting_after,
+                        opp_before=opp_before, opp_after=opp_after,
+                        is_blue=is_blue,
+                    )
+                    model_dir = "buy_a" if event.team_id == match.team_a_id else "buy_b"
+                    pre_event_mid_a = mid_a - recent_move
+                    pre_event_mid = pre_event_mid_a if model_dir == "buy_a" else 1.0 - pre_event_mid_a
+                    p_fair_view = max(0.02, min(0.98, pre_event_mid + impact))
+                    model_view = {
+                        "model_dir": model_dir,
+                        "signal_impact": round(impact, 4),
+                        "pre_event_mid": round(pre_event_mid, 4),
+                        "p_fair": round(p_fair_view, 4),
+                    }
+                except Exception as exc:
+                    log.debug("[MODEL] event-scoring failed for %s %s: %s",
+                              match.name, event.etype.value, exc)
+
         active_mkt_info = match.active_market
         mkt_type = active_mkt_info.market_type if active_mkt_info else "none"
 
@@ -948,8 +1059,11 @@ class LoLTrader:
             "signal_dir": signal.direction if signal else None,
             "signal_size": None,
             "signal_reason": signal.reason if signal else None,
-            "signal_impact": signal.expected_impact if signal else None,
+            "signal_impact": signal.expected_impact if signal else (model_view["signal_impact"] if model_view else None),
             "signal_confidence": signal.confidence if signal else None,
+            "model_dir": model_view["model_dir"] if model_view else None,
+            "pre_event_mid": model_view["pre_event_mid"] if model_view else None,
+            "p_fair": model_view["p_fair"] if model_view else None,
             "mid": round(mid_a, 4),
             "bid": round(bid_a, 4),
             "ask": round(ask_a, 4),
@@ -1397,6 +1511,7 @@ class LoLTrader:
                     key=lambda x: x["p"]
                 )[:8],
                 "price_history": m._price_log[-1000:],
+                "model_prob_history": m._model_prob_log[-1000:],
                 "active": m.active,
                 "finished_at": m.finished_at,
                 "league": m.league,
@@ -1472,12 +1587,12 @@ class LoLTrader:
             "consecutive_losses": 0,
             "poly_ws": self.ws_prices.health(),
             "llf_ws": {
-                "active": sum(1 for t in self._llf_tasks.values() if not t.done()),
+                "active": sum(1 for t in getattr(self, '_llf_tasks', {}).values() if not t.done()),
                 "max": 3,
                 "matches": [
                     self.matches[mid].name
-                    for mid in self._llf_tasks
-                    if not self._llf_tasks[mid].done() and mid in self.matches
+                    for mid in getattr(self, '_llf_tasks', {})
+                    if not getattr(self, '_llf_tasks', {})[mid].done() and mid in self.matches
                 ],
             },
             "matches": matches,

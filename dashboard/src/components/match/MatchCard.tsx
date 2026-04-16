@@ -38,11 +38,14 @@ function eventActionBadge(ev: EventData): { label: string; className: string } {
     if (x === 'no_order_id' || x === 'order_error') return { label: 'FAIL', className: 'bg-red-500/15 text-red-400 border-red-500/30' }
     return { label: 'SIG', className: 'bg-white/[0.06] text-[#888] border-white/[0.08]' }
   }
+  if (ev.action.startsWith('LOW_EDGE')) {
+    return { label: 'LOW EDGE', className: 'bg-orange-500/10 text-orange-400/70 border-orange-500/20' }
+  }
   if (ev.action.startsWith('SPREAD')) {
-    return { label: ev.action.replace(/_/g, ' ').slice(0, 12), className: 'bg-yellow-500/10 text-yellow-400/70 border-yellow-500/20' }
+    return { label: 'SPREAD', className: 'bg-yellow-500/10 text-yellow-400/70 border-yellow-500/20' }
   }
   if (ev.action.startsWith('PRICED')) {
-    return { label: ev.action.replace(/_/g, ' ').slice(0, 12), className: 'bg-purple-500/10 text-purple-400/70 border-purple-500/20' }
+    return { label: 'PRICED IN', className: 'bg-purple-500/10 text-purple-400/70 border-purple-500/20' }
   }
   return { label: ev.action.replace(/_/g, ' ').slice(0, 12), className: 'bg-white/[0.03] text-[#555] border-white/[0.05]' }
 }
@@ -58,19 +61,34 @@ function inferredBuyLimit(ev: EventData): number | null {
 
 // ── Chart ───────────────────────────────────────────────────────────
 
-function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: {
-  priceHistory: [number, number][]; events: EventData[]
+function Chart({ priceHistory, modelProbHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: {
+  priceHistory: [number, number][]; modelProbHistory?: [number, number][]; events: EventData[]
   teamA: string; teamB: string; sideA?: string; sideB?: string; hoveredTs?: number | null
 }) {
   const el = useRef<HTMLDivElement>(null)
   const chart = useRef<IChartApi | null>(null)
   const sA = useRef<ISeriesApi<'Area'> | null>(null)
   const sB = useRef<ISeriesApi<'Line'> | null>(null)
+  const sModel = useRef<ISeriesApi<'Line'> | null>(null)
   const sMkA = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const sMkB = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const sEv = useRef<ISeriesApi<'Histogram'> | null>(null)
   const tARef = useRef(teamA); tARef.current = teamA
   const tBRef = useRef(teamB); tBRef.current = teamB
+  // Once the user pans/zooms, new setData() calls should NOT snap the view.
+  // Reset on Fit / preset-range buttons so auto-follow works again on demand.
+  const userScrolledRef = useRef(false)
+  const preserveRange = (fn: () => void) => {
+    const c = chart.current
+    if (!c || !userScrolledRef.current) { fn(); return }
+    const ts = c.timeScale()
+    const range = ts.getVisibleLogicalRange()
+    fn()
+    if (range) {
+      try { ts.setVisibleLogicalRange(range) } catch {}
+    }
+  }
+  const resetFollow = () => { userScrolledRef.current = false }
 
   const cA = (sideA || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
   const cB = (sideB || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
@@ -107,6 +125,11 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
       crosshairMarkerVisible: false,
       priceFormat: { type: 'custom', formatter: (p: number) => `${tBRef.current.split(' ')[0].slice(0,5)} ${(p*100).toFixed(1)}¢` },
     })
+    sModel.current = c.addSeries(LineSeries, {
+      color: '#f5a623', lineWidth: 1, lineStyle: 2, priceLineVisible: false,
+      lastValueVisible: true, crosshairMarkerVisible: false, pointMarkersVisible: true, pointMarkersRadius: 1.5,
+      priceFormat: { type: 'custom', formatter: (p: number) => `Model ${(p*100).toFixed(1)}%` },
+    })
     sA.current = c.addSeries(AreaSeries, {
       lineColor: cA, topColor: cA + '10', bottomColor: cA + '02', lineWidth: 2,
       lastValueVisible: true, priceLineVisible: false,
@@ -116,7 +139,17 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
     sMkB.current = createSeriesMarkers(sB.current, [])
     const ro = new ResizeObserver(() => { if (el.current) c.applyOptions({ width: el.current.clientWidth, height: el.current.clientHeight }) })
     ro.observe(el.current)
-    return () => { ro.disconnect(); c.remove(); chart.current = null }
+    const markScrolled = () => { userScrolledRef.current = true }
+    const node = el.current
+    node.addEventListener('wheel', markScrolled, { passive: true })
+    node.addEventListener('pointerdown', markScrolled)
+    node.addEventListener('touchstart', markScrolled, { passive: true })
+    return () => {
+      node.removeEventListener('wheel', markScrolled)
+      node.removeEventListener('pointerdown', markScrolled)
+      node.removeEventListener('touchstart', markScrolled)
+      ro.disconnect(); c.remove(); chart.current = null
+    }
   }, [])
 
   useEffect(() => {
@@ -131,15 +164,30 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
       let t = ts; if (t <= last) t = last + 1; last = t
       if (mid > 0) { dA.push({time: t as Time, value: mid}); dB.push({time: t as Time, value: 1 - mid}) }
     }
-    sA.current.setData(dA); sB.current.setData(dB)
+    preserveRange(() => { sA.current!.setData(dA); sB.current!.setData(dB) })
   }, [priceHistory, events])
+
+  useEffect(() => {
+    if (!sModel.current) return
+    if (!modelProbHistory || modelProbHistory.length === 0) {
+      preserveRange(() => sModel.current!.setData([]))
+      return
+    }
+    let last = 0
+    const dM: {time: Time; value: number}[] = []
+    for (const [ts, p] of modelProbHistory) {
+      let t = Math.floor(ts); if (t <= last) t = last + 1; last = t
+      if (p > 0) dM.push({ time: t as Time, value: p })
+    }
+    preserveRange(() => sModel.current!.setData(dM))
+  }, [modelProbHistory])
 
   useEffect(() => {
     if (!sMkA.current || !sMkB.current || !sEv.current) return
     if (events.length === 0) {
       sMkA.current.setMarkers([])
       sMkB.current.setMarkers([])
-      sEv.current.setData([])
+      preserveRange(() => sEv.current!.setData([]))
       return
     }
     // Align event times to chart candle keys (same rules as setData) so markers sit on the series.
@@ -186,7 +234,8 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
     })
     const ded = new Map<number, typeof bars[0]>()
     for (const d of bars) ded.set(d.time as number, d)
-    sEv.current.setData(Array.from(ded.values()).sort((a, b) => (a.time as number) - (b.time as number)))
+    const evData = Array.from(ded.values()).sort((a, b) => (a.time as number) - (b.time as number))
+    preserveRange(() => sEv.current!.setData(evData))
   }, [events, teamA, priceHistory])
 
   useEffect(() => {
@@ -199,9 +248,9 @@ function Chart({ priceHistory, events, teamA, teamB, sideA, sideB, hoveredTs }: 
     <div className="w-full h-full relative group/c">
       <div ref={el} className="w-full h-full" />
       <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover/c:opacity-100 transition-opacity z-10">
-        {([['Fit', () => chart.current?.timeScale().fitContent()],
-          ['1m', () => { const n = Math.floor(Date.now()/1000); chart.current?.timeScale().setVisibleRange({from: (n-60) as Time, to: n as Time}) }],
-          ['5m', () => { const n = Math.floor(Date.now()/1000); chart.current?.timeScale().setVisibleRange({from: (n-300) as Time, to: n as Time}) }],
+        {([['Fit', () => { resetFollow(); chart.current?.timeScale().fitContent() }],
+          ['1m', () => { resetFollow(); const n = Math.floor(Date.now()/1000); chart.current?.timeScale().setVisibleRange({from: (n-60) as Time, to: n as Time}) }],
+          ['5m', () => { resetFollow(); const n = Math.floor(Date.now()/1000); chart.current?.timeScale().setVisibleRange({from: (n-300) as Time, to: n as Time}) }],
         ] as [string, () => void][]).map(([l, fn]) => (
           <button key={l as string} onClick={fn as () => void}
             className="text-[7px] px-1.5 py-0.5 rounded bg-black/50 text-muted-foreground hover:text-foreground backdrop-blur-sm">
@@ -233,17 +282,19 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
         const forA = isA(ev.team)
         const c = forA ? cA : cB
         const isOpen = open === i
-        const isBuyA = ev.signal_dir === 'buy_a'
-        const showBuyIntent = Boolean(ev.signal_dir)
+        const isTradeIntent = Boolean(ev.signal_dir)
+        const modelDir = ev.signal_dir || ev.model_dir
+        const isBuyA = modelDir === 'buy_a'
+        const showModel = Boolean(modelDir) && ev.pre_event_mid != null && ev.p_fair != null
         const limPx = inferredBuyLimit(ev)
         const refPx = isBuyA ? ev.buy_price_a : ev.buy_price_b
-        const buyTitle = ev.signal_dir
+        const buyTitle = isTradeIntent
           ? [
               `Buy outcome token ${isBuyA ? 'A' : 'B'} (${isBuyA ? teamA : teamB})`,
               limPx != null ? `FAK limit ≤ ${(limPx * 100).toFixed(1)}¢` : '',
               refPx > 0 ? `Book ref ${(refPx * 100).toFixed(1)}¢ (+1¢ tick → limit)` : '',
             ].filter(Boolean).join('\n')
-          : ''
+          : `Model win-prob shift for ${isBuyA ? teamA : teamB}${ev.signal_impact != null ? ` (Δ ${(ev.signal_impact * 100).toFixed(1)}c)` : ''}`
         return (
           <div key={i} onMouseEnter={() => onHover(ev.ts)} onMouseLeave={() => onHover(null)}>
             <div onClick={() => setOpen(isOpen ? null : i)}
@@ -253,23 +304,26 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
               <span className="font-bold w-10 shrink-0" style={{color: c}}>{ev.etype.toUpperCase().slice(0,5)}</span>
               <span className="text-[#444] w-10 shrink-0">[{ev.clock}]</span>
               <span className="truncate flex-1 min-w-0" style={{color: c + 'b0'}}>{ev.desc}</span>
-              {showBuyIntent && (() => {
-                const pre = ev.pre_event_mid != null
-                  ? (isBuyA ? ev.pre_event_mid : 1 - ev.pre_event_mid) : null
-                const fair = ev.p_fair != null
-                  ? (isBuyA ? ev.p_fair : 1 - ev.p_fair) : null
+              {showModel && (() => {
+                // pre_event_mid / p_fair are stored from the favored side's
+                // perspective already, so flip only for legacy rows where
+                // we inferred the side from signal_dir. Since backend now
+                // stores in model_dir's frame, no flip needed.
+                const pre = ev.pre_event_mid!
+                const fair = ev.p_fair!
+                const teamLabel = (isBuyA ? teamA : teamB).split(/\s+/)[0]?.slice(0, 10) || '?'
                 return (
                   <div className="w-[120px] shrink-0 text-right leading-tight" title={buyTitle}>
                     <div className="text-[8px] font-bold" style={{ color: isBuyA ? cA : cB }}>
-                      Buy {isBuyA ? 'A' : 'B'} · {(isBuyA ? teamA : teamB).split(/\s+/)[0]?.slice(0, 10) || '?'}
+                      {isTradeIntent
+                        ? `Buy ${isBuyA ? 'A' : 'B'} · ${teamLabel}`
+                        : `${isBuyA ? 'A' : 'B'} · ${teamLabel}`}
                     </div>
-                    {pre != null && fair != null && (
-                      <div className="text-[7px]">
-                        <span className="text-[#777]">{(pre * 100).toFixed(0)}%</span>
-                        <span className="text-[#555]">→</span>
-                        <span className={fair > pre ? 'text-green-400' : fair < pre ? 'text-red-400' : 'text-[#777]'}>{(fair * 100).toFixed(0)}%</span>
-                      </div>
-                    )}
+                    <div className="text-[7px]">
+                      <span className="text-[#777]">{(pre * 100).toFixed(0)}%</span>
+                      <span className="text-[#555]">→</span>
+                      <span className={fair > pre ? 'text-green-400' : fair < pre ? 'text-red-400' : 'text-[#777]'}>{(fair * 100).toFixed(0)}%</span>
+                    </div>
                   </div>
                 )
               })()}
@@ -283,7 +337,7 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                   </span>
                 )
               })()}
-              {!showBuyIntent && (
+              {!showModel && (
                 <span className="text-[#555] w-12 text-right shrink-0">{(ev.mid*100).toFixed(1)}¢</span>
               )}
               <Badge variant="outline" className={`text-[6px] h-2.5 px-1 shrink-0 ${eventActionBadge(ev).className}`} title={
@@ -339,6 +393,20 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                 {ev.action !== 'TRADE' && ev.action !== 'GATED' && ev.action !== 'SKIP_SIZE' && ev.action !== 'ORDER_FAIL' && (
                   <div className="text-orange-400">{ev.action.replace(/_/g,' ')}</div>
                 )}
+                {ev.signal_dir && (ev.signal_impact != null || ev.edge != null || ev.p_fair != null) && (() => {
+                  const buyA = ev.signal_dir === 'buy_a'
+                  const pre = ev.pre_event_mid != null ? (buyA ? ev.pre_event_mid : 1 - ev.pre_event_mid) : null
+                  const fair = ev.p_fair != null ? (buyA ? ev.p_fair : 1 - ev.p_fair) : null
+                  return (
+                    <div className="flex gap-3 text-[#666]">
+                      {pre != null && <span>Pre <span className="text-[#999]">{(pre * 100).toFixed(1)}%</span></span>}
+                      {ev.signal_impact != null && <span>Impact <span className="text-[#bbb]">{ev.signal_impact > 0 ? '+' : ''}{(ev.signal_impact * 100).toFixed(1)}¢</span></span>}
+                      {fair != null && <span>Fair <span className={fair > (pre || 0) ? 'text-green-400' : 'text-red-400/80'}>{(fair * 100).toFixed(1)}%</span></span>}
+                      {ev.edge != null && <span>Edge <span className={ev.edge >= 0.02 ? 'text-green-400' : ev.edge > 0 ? 'text-yellow-400' : 'text-red-400/60'}>{(ev.edge * 100).toFixed(1)}¢</span></span>}
+                      {ev.signal_size != null && ev.signal_size > 0 && <span>Size <span className="text-[#bbb]">${ev.signal_size.toFixed(0)}</span></span>}
+                    </div>
+                  )
+                })()}
                 <div className="flex gap-4 text-[#666]">
                   <span>Mid <span className="text-[#999]">{(ev.mid*100).toFixed(1)}¢</span></span>
                   <span>Bid <span className="text-green-400/60">{(ev.bid*100).toFixed(1)}¢</span></span>
@@ -540,7 +608,7 @@ export function MatchCard({ match, position }: { match: MatchData; position?: Po
         {/* ── Chart ── */}
         {(match.price_history.length > 0 || (match.match_events || []).length > 0) && (
           <div className="h-56">
-            <Chart priceHistory={match.price_history} events={match.match_events || []}
+            <Chart priceHistory={match.price_history} modelProbHistory={match.model_prob_history} events={match.match_events || []}
               teamA={match.team_a} teamB={match.team_b} sideA={t1?.side||undefined} sideB={t2?.side||undefined} hoveredTs={hTs} />
           </div>
         )}

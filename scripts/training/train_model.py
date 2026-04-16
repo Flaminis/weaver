@@ -57,6 +57,21 @@ FEATURES_NO_GOLD = [f for f in FEATURES_FULL if f != "gold_diff"]
 # Production model uses FEATURES_NO_GOLD because LLF doesn't provide gold data.
 FEATURES = FEATURES_NO_GOLD
 
+# Monotonicity constraints: more kills/towers/drakes/barons/inhibs/heralds for blue
+# must ALWAYS increase P(blue_wins). game_minute and totals are unconstrained.
+# Order matches FEATURES_NO_GOLD above.
+MONOTONE_CONSTRAINTS = [
+    0,   # game_minute — no direction
+    1,   # kill_diff — more kills → higher win prob
+    1,   # tower_diff
+    1,   # drake_diff
+    1,   # baron_diff
+    1,   # inhib_diff
+    1,   # herald_diff
+    0,   # total_kills — no direction
+    0,   # total_objectives — no direction
+]
+
 LABEL = "blue_won"
 GROUP = "game_id"
 N_FOLDS = 5
@@ -81,6 +96,7 @@ def objective(trial: optuna.Trial, X: np.ndarray, y: np.ndarray, groups: np.ndar
         "verbosity": -1,
         "boosting_type": "gbdt",
         "seed": SEED,
+        "monotone_constraints": MONOTONE_CONSTRAINTS,
         "num_leaves": trial.suggest_int("num_leaves", 15, 256),
         "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.3, log=True),
         "n_estimators": trial.suggest_int("n_estimators", 100, 2000),
@@ -274,6 +290,7 @@ def main():
         "verbosity": -1,
         "boosting_type": "gbdt",
         "seed": SEED,
+        "monotone_constraints": MONOTONE_CONSTRAINTS,
         **best.params,
     }
 

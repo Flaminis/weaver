@@ -43,6 +43,14 @@ LLF_RECONNECT_DELAY = 5
 LLF_NOT_OPEN_DELAY = 30
 LLF_RECV_TIMEOUT = 300
 
+# ── Model re-score cadence ─────────────────────────────────────────────
+# Time is a signal: 5-0 at min 1 != 5-0 at min 30. Even when LLF is silent
+# between kills/objectives, the model's P(win) should drift as game_minute
+# advances. These control the periodic re-scoring loop.
+
+MODEL_RESCORE_SEC = 5           # Re-score every N seconds for each live game
+MODEL_RESCORE_DEDUP_SEC = 1.5   # Skip append if last log entry is within this gap
+
 # ── Combo detection (signal v2) ─────────────────────────────────────────
 
 COMBO_WINDOW_SEC = 30           # Events within 30s are part of same combo

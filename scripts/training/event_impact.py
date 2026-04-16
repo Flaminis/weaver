@@ -63,12 +63,16 @@ class EventImpactModel:
         team_stats: dict,
         opponent_stats: dict,
         is_blue: bool = True,
+        pin_totals_from: tuple[dict, dict] | None = None,
     ) -> np.ndarray:
         """Build the feature vector from team perspective.
 
         The model is trained with blue-side as reference. If the acting team
         is red, we flip the sign of all diff features so the model sees it
         from blue's perspective, then we flip the output probability.
+
+        pin_totals_from: if set, total_kills and total_objectives are
+        sourced from (pin_team, pin_opp) instead of the current stats.
         """
         tk = team_stats.get("kills", 0)
         ok = opponent_stats.get("kills", 0)
@@ -84,6 +88,16 @@ class EventImpactModel:
         oh = opponent_stats.get("heralds", 0)
         sign = 1 if is_blue else -1
 
+        if pin_totals_from:
+            pt, po = pin_totals_from
+            total_k = pt.get("kills", 0) + po.get("kills", 0)
+            total_o = ((pt.get("towers", 0) + po.get("towers", 0))
+                       + (pt.get("drakes", 0) + po.get("drakes", 0))
+                       + (pt.get("barons", 0) + po.get("barons", 0)))
+        else:
+            total_k = tk + ok
+            total_o = (tt + ot) + (td + od) + (tb + ob)
+
         state = {
             "game_minute": game_minute,
             "kill_diff": sign * (tk - ok),
@@ -92,8 +106,8 @@ class EventImpactModel:
             "baron_diff": sign * (tb - ob),
             "inhib_diff": sign * (ti - oi),
             "herald_diff": sign * (th - oh),
-            "total_kills": tk + ok,
-            "total_objectives": (tt + ot) + (td + od) + (tb + ob),
+            "total_kills": total_k,
+            "total_objectives": total_o,
         }
         return np.array([[state[f] for f in self.features]])
 
@@ -103,9 +117,19 @@ class EventImpactModel:
         team_stats: dict,
         opponent_stats: dict,
         is_blue: bool = True,
+        pin_totals_from: tuple[dict, dict] | None = None,
     ) -> float:
-        """Predict P(team wins) given current state."""
-        X = self._build_feature_vec(game_minute, team_stats, opponent_stats, is_blue)
+        """Predict P(team wins) given current state.
+
+        If pin_totals_from is provided, total_kills and total_objectives
+        are computed from that (team, opp) pair instead, keeping them
+        constant across before/after comparisons so that monotone
+        constraints on diff features are respected.
+        """
+        X = self._build_feature_vec(
+            game_minute, team_stats, opponent_stats, is_blue,
+            pin_totals_from=pin_totals_from,
+        )
         p_blue = self.model.predict_proba(X)[0, 1]
         return p_blue if is_blue else 1 - p_blue
 
@@ -121,9 +145,16 @@ class EventImpactModel:
         """Predict the win-probability delta from a state change.
 
         Returns positive value if the event favors the acting team.
+
+        Totals (total_kills, total_objectives) are held constant between
+        before/after so the monotone-constrained diff features fully
+        determine the sign of the impact.
         """
         p_before = self.predict_win_prob(game_minute, state_before, opponent_before, is_blue)
-        p_after = self.predict_win_prob(game_minute, state_after, opponent_after, is_blue)
+        p_after = self.predict_win_prob(
+            game_minute, state_after, opponent_after, is_blue,
+            pin_totals_from=(state_before, opponent_before),
+        )
         return p_after - p_before
 
     def predict_impact_from_llf(
@@ -158,7 +189,10 @@ class EventImpactModel:
         oa = _normalize(opp_after)
 
         p_before = self.predict_win_prob(game_minute, tb, ob, is_blue=is_blue)
-        p_after = self.predict_win_prob(game_minute, ta, oa, is_blue=is_blue)
+        p_after = self.predict_win_prob(
+            game_minute, ta, oa, is_blue=is_blue,
+            pin_totals_from=(tb, ob),
+        )
         return p_after - p_before, p_before, p_after
 
 

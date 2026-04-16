@@ -24,6 +24,7 @@ export interface MatchData {
   book_bids: BookLevel[]
   book_asks: BookLevel[]
   price_history: [number, number][]
+  model_prob_history: [number, number][]
   active: boolean
   finished_at: number
   league: string
@@ -141,6 +142,9 @@ export interface EventData {
   signal_reason: string | null
   signal_impact: number | null
   signal_confidence: number | null
+  /** Model-only direction: which team the event's impact favors. Set on every
+   * game event (kill/tower/drake/baron/inhib), even ones that never traded. */
+  model_dir?: string | null
   p_fair?: number | null
   edge?: number | null
   pre_event_mid?: number | null
