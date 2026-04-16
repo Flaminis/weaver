@@ -125,6 +125,11 @@ export interface EventData {
   clock: string
   desc: string
   action: string
+  /** How many units this event represents (e.g. 2 for a double kill, 1 for a tower). */
+  delta?: number
+  /** Team stat new cumulative value after this event (kills count, towers count, etc.). */
+  new_value?: number
+  old_value?: number
   /** How the entry resolved after a TRADE signal: dry_run vs CLOB vs gated, etc. */
   trade_exec?: string | null
   gate_reason?: string | null

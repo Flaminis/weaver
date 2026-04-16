@@ -301,7 +301,15 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
               className={`flex items-center gap-1.5 px-2 py-[3px] cursor-pointer transition-colors ${isOpen ? 'bg-white/[0.03]' : 'hover:bg-white/[0.02]'}`}>
               <span className="text-[#444] w-[68px] shrink-0">{ev.time}</span>
               <span className="w-3 shrink-0">{EVT_EMOJI[ev.etype] || '•'}</span>
-              <span className="font-bold w-10 shrink-0" style={{color: c}}>{ev.etype.toUpperCase().slice(0,5)}</span>
+              <span className="font-bold w-14 shrink-0 tabular-nums" style={{color: c}}
+                    title={ev.new_value != null ? `Team now at ${ev.new_value}` : ''}>
+                {ev.etype.toUpperCase().slice(0,4)}
+                {ev.delta != null && ev.delta !== 0 && (
+                  <span className={ev.delta > 1 ? 'ml-1' : 'ml-1 opacity-70'}>
+                    {ev.delta > 0 ? `+${ev.delta}` : ev.delta}
+                  </span>
+                )}
+              </span>
               <span className="text-[#444] w-10 shrink-0">[{ev.clock}]</span>
               <span className="truncate flex-1 min-w-0" style={{color: c + 'b0'}}>{ev.desc}</span>
               {showModel && (() => {
