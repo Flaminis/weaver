@@ -311,7 +311,14 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                 )}
               </span>
               <span className="text-[#444] w-10 shrink-0">[{ev.clock}]</span>
-              <span className="truncate flex-1 min-w-0" style={{color: c + 'b0'}}>{ev.desc}</span>
+              <span className="truncate flex-1 min-w-0" style={{color: c + 'b0'}} title={ev.desc}>
+                {ev.old_value != null && ev.new_value != null ? (
+                  <>
+                    <span className="tabular-nums font-bold" style={{color: c}}>{ev.old_value}→{ev.new_value}</span>
+                    <span className="opacity-70 ml-1.5">{(ev.team || '').split(/\s+/).slice(0, 2).join(' ').slice(0, 22)}</span>
+                  </>
+                ) : ev.desc}
+              </span>
               {showModel && (() => {
                 // pre_event_mid / p_fair are stored from the favored side's
                 // perspective already, so flip only for legacy rows where
