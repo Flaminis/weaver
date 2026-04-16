@@ -27,7 +27,7 @@ MIN_EDGE = 0.02                 # 2c minimum edge after fees to fire a trade
 KELLY_FRACTION = 0.25           # Quarter Kelly — conservative for model uncertainty
 BANKROLL = 5000.0               # Total bankroll for Kelly sizing
 MIN_BET = 5.0                   # Floor — below this not worth execution overhead
-MAX_SINGLE_BET = 250.0          # Ceiling per trade
+MAX_SINGLE_BET = 1500.0         # Ceiling per trade
 MAX_BOOK_PARTICIPATION = 0.30   # Never take more than 30% of available book depth
 
 # ── PandaScore ──────────────────────────────────────────────────────────
