@@ -16,7 +16,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
+# pandas is only needed for loading the champion_scores parquet at boot.
+# Lazy-imported inside ChampionScoreTable.from_parquet so the trader can
+# run on VPSes without pandas installed (falls back to ChampionScoreTable.empty()
+# → neutral comp_diff for v2 inference).
 
 # Canonical feature order — MUST match FEATURES_LIVE in train_model.py.
 # The trained model expects columns in this exact order. Any reorder breaks
@@ -54,11 +57,27 @@ class ChampionScoreTable:
 
     @classmethod
     def from_parquet(cls, path: str | Path) -> "ChampionScoreTable":
-        df = pd.read_parquet(path)
-        scores = dict(zip(df["champion"].astype(str), df["winrate_shrunk"].astype(float)))
-        # Global mean: games-weighted average of raw rates.
-        total_g = int(df["games"].sum())
-        total_w = int(df["wins"].sum())
+        """Load champion scores. Tries pandas first (pretty), falls back to
+        pyarrow (minimal). If neither is available, caller should catch the
+        ImportError and use `empty()` — inference degrades to comp_diff=0."""
+        try:
+            import pandas as pd
+            df = pd.read_parquet(path)
+            champions = df["champion"].astype(str).tolist()
+            winrates = df["winrate_shrunk"].astype(float).tolist()
+            games = df["games"].astype(int).tolist()
+            wins = df["wins"].astype(int).tolist()
+        except ImportError:
+            import pyarrow.parquet as pq  # lighter weight; ships with many envs
+            table = pq.read_table(path)
+            d = table.to_pydict()
+            champions = [str(c) for c in d["champion"]]
+            winrates = [float(w) for w in d["winrate_shrunk"]]
+            games = [int(g) for g in d["games"]]
+            wins = [int(w) for w in d["wins"]]
+        scores = dict(zip(champions, winrates))
+        total_g = sum(games)
+        total_w = sum(wins)
         global_mean = total_w / total_g if total_g else 0.5
         return cls(scores=scores, global_mean=float(global_mean))
 

@@ -72,7 +72,17 @@ class EventImpactModel:
 
         csp = Path(champ_scores_path) if champ_scores_path else CHAMP_SCORES_PATH
         if csp.exists():
-            self.champ_scores = ChampionScoreTable.from_parquet(csp)
+            try:
+                self.champ_scores = ChampionScoreTable.from_parquet(csp)
+            except Exception as exc:
+                # pandas + pyarrow both missing on this env — degrade gracefully.
+                # v2 comp_diff feature will be 0 (global mean) for every team.
+                # Model loses comp signal but everything else (momentum + snapshot)
+                # still works. Trader boots, can still trade.
+                print(f"[event_impact] warning: could not load champion_scores "
+                      f"({type(exc).__name__}: {exc}). Falling back to empty table "
+                      f"(comp_diff=0 everywhere).")
+                self.champ_scores = ChampionScoreTable.empty()
         else:
             # Works for v1 (no comp_diff) and for v2 with neutral composition.
             self.champ_scores = ChampionScoreTable.empty()
