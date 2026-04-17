@@ -60,6 +60,16 @@ MODEL_RESCORE_DEDUP_SEC = 1.5   # Skip append if last log entry is within this g
 PRIMARY_MODEL = "v2"            # Drives all trade sizing / impact decisions
 MODEL_FALLBACK_TO_V1_ON_ERROR = True  # If v2 inference throws, log and retry on v1
 
+# ── Tradeable events ────────────────────────────────────────────────────
+# Towers were hard-skipped historically because their impact is highly
+# variable (outer/inner/inhib all roll up into a single `towers` counter).
+# v2 treats tower_diff as monotone, and the MIN_EDGE gate (+ existing
+# cooldowns) filters out the low-impact ones. Only inhib-adjacent or
+# late-game towers where the model sees a meaningful delta will trade.
+# Flip to False to roll back without touching code.
+
+ENABLE_TOWER_TRADING = True
+
 # ── Combo detection (signal v2) ─────────────────────────────────────────
 
 COMBO_WINDOW_SEC = 30           # Events within 30s are part of same combo

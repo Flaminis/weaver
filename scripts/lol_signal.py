@@ -174,7 +174,13 @@ class ComboWindow:
         return [e for e in self.events if e.team_id == team_id and e.ts >= cutoff]
 
 
-TRADEABLE = {EventType.BARON, EventType.INHIBITOR, EventType.DRAKE, EventType.KILL}
+def _tradeable_set() -> set:
+    """Read fresh each call so flipping ENABLE_TOWER_TRADING in config +
+    restart takes effect. No module import caching needed."""
+    base = {EventType.BARON, EventType.INHIBITOR, EventType.DRAKE, EventType.KILL}
+    if getattr(cfg, "ENABLE_TOWER_TRADING", False):
+        base.add(EventType.TOWER)
+    return base
 
 _STAT_KEY_MAP = {
     EventType.KILL: "kills",
@@ -189,7 +195,8 @@ def _direction_for_team(team_id: int, team_a_id: int) -> str:
     return "buy_a" if team_id == team_a_id else "buy_b"
 
 
-def _tier_label(etype: EventType, is_soul: bool, teamfight_kills: int) -> str:
+def _tier_label(etype: EventType, is_soul: bool, teamfight_kills: int,
+                 tower_index: int = 0) -> str:
     if etype == EventType.BARON:
         return "BARON"
     if etype == EventType.INHIBITOR:
@@ -202,6 +209,14 @@ def _tier_label(etype: EventType, is_soul: bool, teamfight_kills: int) -> str:
         if teamfight_kills == 2:
             return "STK2"
         return "KILL1"
+    if etype == EventType.TOWER:
+        # Nth tower by a single team — 1-3 is outer/mid, 4+ is inhib-tier.
+        # Late towers tend to carry the real macro signal; label accordingly.
+        if tower_index >= 8:
+            return "TOWER_NEXUS"
+        if tower_index >= 4:
+            return "TOWER_INHIB"
+        return f"TOWER{tower_index}"
     return "NONE"
 
 
@@ -228,11 +243,12 @@ class SignalModel:
     ) -> tuple[Signal | None, str]:
         self.combo.add(event)
 
-        if event.etype == EventType.TOWER:
-            return None, "TOWER_SKIP"
         if event.etype == EventType.STATUS:
             return None, "STATUS_SKIP"
-        if event.etype not in TRADEABLE:
+        tradeable = _tradeable_set()
+        if event.etype == EventType.TOWER and event.etype not in tradeable:
+            return None, "TOWER_SKIP"
+        if event.etype not in tradeable:
             return None, f"NOT_TRADEABLE_{event.etype.value}"
 
         is_soul = False
@@ -290,7 +306,10 @@ class SignalModel:
 
         teamfight_kills = self.combo.recent_kills(event.team_id, cfg.TEAMFIGHT_WINDOW_SEC)
         combo_types = {e.etype for e in self.combo.recent_events(event.team_id)}
-        tier = _tier_label(event.etype, is_soul, teamfight_kills)
+        # For TOWER events, event.new_value is the team's cumulative tower count —
+        # passed to _tier_label so it can distinguish outer (1-3) from inhib-tier (4+).
+        tier = _tier_label(event.etype, is_soul, teamfight_kills,
+                           tower_index=int(event.new_value) if event.etype == EventType.TOWER else 0)
 
         reason_parts = [tier]
         if is_soul:
