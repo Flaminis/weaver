@@ -70,6 +70,7 @@ function Chart({ priceHistory, modelProbHistory, events, teamA, teamB, sideA, si
   const sA = useRef<ISeriesApi<'Area'> | null>(null)
   const sB = useRef<ISeriesApi<'Line'> | null>(null)
   const sModel = useRef<ISeriesApi<'Line'> | null>(null)
+  const sModelB = useRef<ISeriesApi<'Line'> | null>(null)
   const sMkA = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const sMkB = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const sEv = useRef<ISeriesApi<'Histogram'> | null>(null)
@@ -125,10 +126,19 @@ function Chart({ priceHistory, modelProbHistory, events, teamA, teamB, sideA, si
       crosshairMarkerVisible: false,
       priceFormat: { type: 'custom', formatter: (p: number) => `${tBRef.current.split(' ')[0].slice(0,5)} ${(p*100).toFixed(1)}¢` },
     })
+    // Model line for team A (dominant): orange-yellow, solid dashed, with markers.
     sModel.current = c.addSeries(LineSeries, {
       color: '#f5a623', lineWidth: 1, lineStyle: 2, priceLineVisible: false,
       lastValueVisible: true, crosshairMarkerVisible: false, pointMarkersVisible: true, pointMarkersRadius: 1.5,
-      priceFormat: { type: 'custom', formatter: (p: number) => `Model ${(p*100).toFixed(1)}%` },
+      priceFormat: { type: 'custom', formatter: (p: number) => `Model A ${(p*100).toFixed(1)}%` },
+    })
+    // Mirror line for team B: brighter yellow, same dash style, also with
+    // markers. P(B) = 1 - P(A); plotting it explicitly lets the user compare
+    // model-vs-market for B's token in the lower half of the chart directly.
+    sModelB.current = c.addSeries(LineSeries, {
+      color: '#fbbf24', lineWidth: 1, lineStyle: 2, priceLineVisible: false,
+      lastValueVisible: true, crosshairMarkerVisible: false, pointMarkersVisible: true, pointMarkersRadius: 1.5,
+      priceFormat: { type: 'custom', formatter: (p: number) => `Model B ${(p*100).toFixed(1)}%` },
     })
     sA.current = c.addSeries(AreaSeries, {
       lineColor: cA, topColor: cA + '10', bottomColor: cA + '02', lineWidth: 2,
@@ -168,18 +178,28 @@ function Chart({ priceHistory, modelProbHistory, events, teamA, teamB, sideA, si
   }, [priceHistory, events])
 
   useEffect(() => {
-    if (!sModel.current) return
+    if (!sModel.current || !sModelB.current) return
     if (!modelProbHistory || modelProbHistory.length === 0) {
-      preserveRange(() => sModel.current!.setData([]))
+      preserveRange(() => {
+        sModel.current!.setData([])
+        sModelB.current!.setData([])
+      })
       return
     }
     let last = 0
     const dM: {time: Time; value: number}[] = []
+    const dMB: {time: Time; value: number}[] = []
     for (const [ts, p] of modelProbHistory) {
       let t = Math.floor(ts); if (t <= last) t = last + 1; last = t
-      if (p > 0) dM.push({ time: t as Time, value: p })
+      if (p > 0 && p < 1) {
+        dM.push({ time: t as Time, value: p })
+        dMB.push({ time: t as Time, value: 1 - p })
+      }
     }
-    preserveRange(() => sModel.current!.setData(dM))
+    preserveRange(() => {
+      sModel.current!.setData(dM)
+      sModelB.current!.setData(dMB)
+    })
   }, [modelProbHistory])
 
   useEffect(() => {
