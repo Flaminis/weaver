@@ -1326,7 +1326,6 @@ class LoLTrader:
             post_trade_prices: list[dict] = []
             ev_record["post_trade_prices"] = post_trade_prices
 
-            fill_px = float(ev_record.get("fill_price") or 0)
             direction = signal.direction  # "buy_a" or "buy_b"
 
             after_ticks = []
@@ -1343,19 +1342,32 @@ class LoLTrader:
                     off = MILESTONES[milestone_idx]
                     mid = float(snap["mid"])
                     our_px = mid if direction == "buy_a" else (1.0 - mid)
-                    delta_c = round((our_px - fill_px) * 100, 2) if fill_px > 0 else 0.0
+                    # Re-read fill_price each milestone — fill confirmation is
+                    # async and may land AFTER the tape task starts. If it
+                    # still isn't set by this milestone, record delta_c=None
+                    # so UI shows "—" instead of a misleading 0.0c.
+                    fill_px_now = float(ev_record.get("fill_price") or 0)
+                    if fill_px_now > 0:
+                        delta_c = round((our_px - fill_px_now) * 100, 2)
+                    else:
+                        delta_c = None
                     post_trade_prices.append({
                         "offset_sec": off,
                         "mid": round(mid, 4),
                         "our_px": round(our_px, 4),
                         "delta_c": delta_c,
                     })
-                    sign = "+" if delta_c >= 0 else ""
                     story = ev_record.get("exec_story") or ""
-                    ev_record["exec_story"] = story + (
-                        f"\n+{off}s post-fill: {direction.upper()} mark {our_px*100:.1f}¢ "
-                        f"({sign}{delta_c:.1f}¢ vs fill)"
-                    )
+                    if delta_c is None:
+                        ev_record["exec_story"] = story + (
+                            f"\n+{off}s post-fill: {direction.upper()} mark {our_px*100:.1f}¢ (fill px unknown)"
+                        )
+                    else:
+                        sign = "+" if delta_c >= 0 else ""
+                        ev_record["exec_story"] = story + (
+                            f"\n+{off}s post-fill: {direction.upper()} mark {our_px*100:.1f}¢ "
+                            f"({sign}{delta_c:.1f}¢ vs fill @ {fill_px_now*100:.1f}¢)"
+                        )
                     milestone_idx += 1
 
                 if i < 60:
@@ -1540,6 +1552,11 @@ class LoLTrader:
                     story.append(f"3) Raw trade row parsed ({scale_note}): {fill_size:.2f} sh @ {fill_price:.4f}.")
                 else:
                     story.append(f"3) Trade matched: {fill_size:.2f} sh @ {fill_price:.4f}.")
+
+            # Persist on ev_record so downstream (trade tape + dashboard) can
+            # compute post-fill Δc vs the actual fill, not vs a zero default.
+            ev_record["fill_price"] = round(fill_price, 4)
+            ev_record["fill_reported_shares"] = round(fill_size, 4)
 
             if not _fill_size_plausible(fill_size, shares):
                 log.error("[ENTRY] Rejecting fill: size=%.4f vs expected ~%.1f", fill_size, shares)

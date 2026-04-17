@@ -137,12 +137,14 @@ export interface EventData {
   /** Multi-line timeline: intent → order → fill/sell/reconcile; human-readable. */
   exec_story?: string | null
   /** Mark-to-market price snapshots at +5s/+10s/+30s/+60s after entry fill.
-   * Populated progressively by the trade-tape task. */
+   * Populated progressively by the trade-tape task. delta_c is null if the
+   * fill price wasn't known at the milestone time (e.g. fill confirmation
+   * arrived late); in that case, show our_px but hide the delta. */
   post_trade_prices?: {
     offset_sec: number
     mid: number
     our_px: number
-    delta_c: number
+    delta_c: number | null
   }[]
   clob_order_id?: string | null
   fill_reported_shares?: number | null

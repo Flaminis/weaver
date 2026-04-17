@@ -408,9 +408,11 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                   <div className="flex items-stretch gap-1 text-[7px] font-mono"
                        title="Mark-to-market price of the bought token at +5s/+10s/+30s/+60s after fill">
                     {ev.post_trade_prices.map((p, idx) => {
-                      const up = p.delta_c > 0
-                      const down = p.delta_c < 0
-                      const color = up ? 'text-green-400' : down ? 'text-red-400' : 'text-[#888]'
+                      const d = p.delta_c
+                      const hasDelta = d != null
+                      const up = hasDelta && d > 0
+                      const down = hasDelta && d < 0
+                      const color = up ? 'text-green-400' : down ? 'text-red-400' : 'text-[#666]'
                       const bg = up ? 'bg-green-500/8 border-green-500/20'
                                     : down ? 'bg-red-500/8 border-red-500/20'
                                     : 'bg-white/[0.02] border-white/[0.06]'
@@ -419,9 +421,13 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                           <div className="text-[#555] text-[6px] uppercase tracking-wider">+{p.offset_sec}s</div>
                           <div className="flex items-baseline gap-1">
                             <span className="font-bold text-[#ccc] tabular-nums">{(p.our_px * 100).toFixed(1)}¢</span>
-                            <span className={`${color} tabular-nums text-[7px]`}>
-                              {p.delta_c > 0 ? '+' : ''}{p.delta_c.toFixed(1)}¢
-                            </span>
+                            {hasDelta ? (
+                              <span className={`${color} tabular-nums text-[7px]`}>
+                                {d > 0 ? '+' : ''}{d.toFixed(1)}¢
+                              </span>
+                            ) : (
+                              <span className="text-[#555] text-[7px]" title="Fill price not yet known when this snapshot was taken">—</span>
+                            )}
                           </div>
                         </div>
                       )
