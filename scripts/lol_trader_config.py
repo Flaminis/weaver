@@ -9,13 +9,12 @@ Exit: HOLD TO RESOLUTION — no active selling. Winning shares pay $1.00.
 
 TRADE_MIN_PRICE = 0.02          # Don't buy below 2c
 TRADE_MAX_PRICE = 0.85          # Don't buy above 85c
-# Spread gate is a belt-and-braces safety for stale/illiquid books. The real
-# filter is MIN_EDGE downstream (in lol_trader._process_event) — it subtracts
-# the fee-adjusted ask from p_fair, so wider spreads naturally require larger
-# model impact to still clear. 4c is the point where the bot will almost
-# certainly also fail MIN_BOOK_DEPTH or MIN_EDGE anyway; above that we bail
-# early to avoid even running the model on obviously-broken books.
-MAX_SPREAD = 0.04               # Max 4c spread (was 2c — too tight given v2 edge discipline)
+# Wide-spread protection is REDUNDANT with MIN_EDGE: edge = p_fair - ask*(1+fee),
+# so any spread that would produce bad fills naturally fails the 2c edge gate.
+# MIN_BOOK_DEPTH handles thin-liquidity slippage risk. This cap exists only
+# to bail out on obviously-broken books (20c+ spreads = bot glitch or dead
+# market). Everything below it is decided by whether the edge justifies it.
+MAX_SPREAD = 0.10               # Max 10c spread — only blocks broken books
 MIN_BOOK_DEPTH = 30             # $ depth within 3c of best (buy side)
 PRE_EVENT_WINDOW_SEC = 2.0      # Look-back window for estimating pre-event mid
 NEAR_RESOLVED_FLOOR = 0.03      # Skip markets priced below 3c
