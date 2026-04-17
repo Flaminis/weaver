@@ -404,6 +404,39 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
                     {ev.exec_story}
                   </pre>
                 )}
+                {ev.post_trade_prices && ev.post_trade_prices.length > 0 && (
+                  <div className="flex items-stretch gap-1 text-[7px] font-mono"
+                       title="Mark-to-market price of the bought token at +5s/+10s/+30s/+60s after fill">
+                    {ev.post_trade_prices.map((p, idx) => {
+                      const up = p.delta_c > 0
+                      const down = p.delta_c < 0
+                      const color = up ? 'text-green-400' : down ? 'text-red-400' : 'text-[#888]'
+                      const bg = up ? 'bg-green-500/8 border-green-500/20'
+                                    : down ? 'bg-red-500/8 border-red-500/20'
+                                    : 'bg-white/[0.02] border-white/[0.06]'
+                      return (
+                        <div key={idx} className={`flex-1 border rounded px-2 py-1 ${bg}`}>
+                          <div className="text-[#555] text-[6px] uppercase tracking-wider">+{p.offset_sec}s</div>
+                          <div className="flex items-baseline gap-1">
+                            <span className="font-bold text-[#ccc] tabular-nums">{(p.our_px * 100).toFixed(1)}¢</span>
+                            <span className={`${color} tabular-nums text-[7px]`}>
+                              {p.delta_c > 0 ? '+' : ''}{p.delta_c.toFixed(1)}¢
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {Array.from({ length: 4 - ev.post_trade_prices.length }).map((_, i) => (
+                      <div key={`pending-${i}`}
+                           className="flex-1 border border-white/[0.04] border-dashed rounded px-2 py-1 bg-white/[0.01]">
+                        <div className="text-[#333] text-[6px] uppercase tracking-wider">
+                          +{[5, 10, 30, 60][ev.post_trade_prices!.length + i]}s
+                        </div>
+                        <div className="text-[#333] text-[7px]">pending…</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {ev.action === 'TRADE' && ev.trade_exec === 'polymarket_ok' && (
                   <div className="text-green-400 font-bold">Fill verified — {ev.signal_dir?.toUpperCase()} ${ev.signal_size?.toFixed(2)} — {ev.signal_reason}</div>
                 )}

@@ -1317,6 +1317,18 @@ class LoLTrader:
         game_state: dict | None = None,
     ):
         try:
+            # Milestone offsets surfaced to the dashboard. ev_record is shared
+            # by reference with _recent_events, so every milestone update
+            # becomes visible on the next /api/state poll.
+            MILESTONES = [5, 10, 30, 60]
+            milestone_idx = 0
+            # Structured trail for future UI work.
+            post_trade_prices: list[dict] = []
+            ev_record["post_trade_prices"] = post_trade_prices
+
+            fill_px = float(ev_record.get("fill_price") or 0)
+            direction = signal.direction  # "buy_a" or "buy_b"
+
             after_ticks = []
             for i in range(61):
                 if not book.has_book:
@@ -1324,6 +1336,28 @@ class LoLTrader:
                 snap = self._snapshot_book(book)
                 snap["ts_offset"] = round(time.time() - signal_ts, 2)
                 after_ticks.append(snap)
+
+                # Record every milestone we've crossed. Usually exactly one
+                # crosses per iteration, but fast-forward if a pause dropped us.
+                while milestone_idx < len(MILESTONES) and snap["ts_offset"] >= MILESTONES[milestone_idx]:
+                    off = MILESTONES[milestone_idx]
+                    mid = float(snap["mid"])
+                    our_px = mid if direction == "buy_a" else (1.0 - mid)
+                    delta_c = round((our_px - fill_px) * 100, 2) if fill_px > 0 else 0.0
+                    post_trade_prices.append({
+                        "offset_sec": off,
+                        "mid": round(mid, 4),
+                        "our_px": round(our_px, 4),
+                        "delta_c": delta_c,
+                    })
+                    sign = "+" if delta_c >= 0 else ""
+                    story = ev_record.get("exec_story") or ""
+                    ev_record["exec_story"] = story + (
+                        f"\n+{off}s post-fill: {direction.upper()} mark {our_px*100:.1f}¢ "
+                        f"({sign}{delta_c:.1f}¢ vs fill)"
+                    )
+                    milestone_idx += 1
+
                 if i < 60:
                     await asyncio.sleep(1.0)
 
