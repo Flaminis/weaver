@@ -1175,8 +1175,11 @@ class LoLTrader:
             "book_snapshot": book_snap,
         }
         self._recent_events.append(ev_record)
-        if len(self._recent_events) > 500:
-            self._recent_events = self._recent_events[-250:]
+        # Keep a deep buffer so users can scroll back through history for a
+        # live match without losing context. ~1500 events × ~1KB = 1.5 MB max
+        # in memory — trivial. Per-match view still filters via match_id.
+        if len(self._recent_events) > 1500:
+            self._recent_events = self._recent_events[-1000:]
 
         if signal is None:
             if reason not in ("TOWER_SKIP", "STATUS_SKIP", "NOT_TRADEABLE_status"):
@@ -1616,7 +1619,7 @@ class LoLTrader:
                 "league": m.league,
                 "status": m.status,
                 "event_count": len(match_events),
-                "match_events": match_events[-30:],
+                "match_events": match_events[-200:],
                 "llf_connected": m.ps_match_id in self._llf_tasks and not self._llf_tasks[m.ps_match_id].done() if hasattr(self, '_llf_tasks') else False,
                 "llf_status": m.llf_status,
                 "llf_last_msg_age": round(now - m.llf_last_msg_at, 1) if m.llf_last_msg_at > 0 else -1,

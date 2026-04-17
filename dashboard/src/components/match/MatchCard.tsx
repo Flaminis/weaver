@@ -274,7 +274,10 @@ function Events({ events, onHover, teamA, teamB, sideA, sideB }: {
   const cB = (sideB || '').toLowerCase() === 'blue' ? '#58a6ff' : '#f85149'
   const aLo = teamA.toLowerCase()
   const isA = (t: string) => { const lo = t.toLowerCase(); return lo.includes(aLo) || aLo.includes(lo) }
-  const rev = [...events].reverse().slice(0, 8)
+  // Show ALL events the backend sends (currently capped at 200/match in the
+  // API). The outer container is max-h-48 overflow-y-auto, so the user can
+  // scroll through the full history without older events getting evicted.
+  const rev = [...events].reverse()
 
   return (
     <div className="border-t border-border/50 text-[9px] font-mono max-h-48 overflow-y-auto">
