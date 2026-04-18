@@ -56,6 +56,17 @@ LLF_RECV_TIMEOUT = 300
 MODEL_RESCORE_SEC = 5           # Re-score every N seconds for each live game
 MODEL_RESCORE_DEDUP_SEC = 1.5   # Skip append if last log entry is within this gap
 
+# Smoothing window for the rescore chart line. LightGBM splits on game_minute
+# at discrete thresholds — between events the prediction jumps in steps when
+# crossing a split. Averaging model predictions across a ±window/2 game_minute
+# window produces a smoother chart that reflects the continuous nature of
+# "time elapsed without events" without actually changing the model. Event
+# impacts (predict_impact_from_llf) stay unsmoothed — the before/after delta
+# at the same minute is exactly what we want there.
+
+MODEL_SMOOTH_WINDOW_SEC = 100   # Total window width in seconds (±50s around current)
+MODEL_SMOOTH_N_SAMPLES = 5      # Number of sample points across the window
+
 # ── Model selection ────────────────────────────────────────────────────
 # "v2" = winprob_lgbm_v2.joblib (momentum + champion features, 13 inputs)
 # "v1" = winprob_lgbm.joblib (baseline, 9 inputs)
