@@ -866,40 +866,16 @@ class LoLTrader:
             picks = match._champion_picks.get(gid, {})
             ta_champs = picks.get(match.team_a_id)
             tb_champs = picks.get(match.team_b_id)
-
-            # Smooth across ±window/2 of game_minute to soften tree-split
-            # steps. Averaging N samples centered on the current minute.
-            window_sec = float(getattr(cfg, "MODEL_SMOOTH_WINDOW_SEC", 0))
-            n_samples = int(getattr(cfg, "MODEL_SMOOTH_N_SAMPLES", 1))
-            if window_sec > 0 and n_samples > 1:
-                offsets_min = [
-                    ((i / (n_samples - 1)) - 0.5) * (window_sec / 60.0)
-                    for i in range(n_samples)
-                ]
-                probs: list[float] = []
-                for off in offsets_min:
-                    gm = max(0.0, (game_sec / 60.0) + off)
-                    try:
-                        probs.append(safe_predict_win_prob(
-                            gm,
-                            _norm_llf(ta_st), _norm_llf(tb_st),
-                            is_blue=is_a_blue,
-                            state_history=history, current_ts=now,
-                            team_champs=ta_champs, opp_champs=tb_champs,
-                        ))
-                    except Exception:
-                        pass
-                if not probs:
-                    return
-                p_a = sum(probs) / len(probs)
-            else:
-                p_a = safe_predict_win_prob(
-                    game_sec / 60.0,
-                    _norm_llf(ta_st), _norm_llf(tb_st),
-                    is_blue=is_a_blue,
-                    state_history=history, current_ts=now,
-                    team_champs=ta_champs, opp_champs=tb_champs,
-                )
+            # safe_predict_win_prob handles smoothing internally via
+            # MODEL_SMOOTH_WINDOW_SEC — so rescore line, event scoring, and
+            # trade-decision impacts all share the same smoothing policy.
+            p_a = safe_predict_win_prob(
+                game_sec / 60.0,
+                _norm_llf(ta_st), _norm_llf(tb_st),
+                is_blue=is_a_blue,
+                state_history=history, current_ts=now,
+                team_champs=ta_champs, opp_champs=tb_champs,
+            )
         except Exception as exc:
             log.debug("[MODEL] rescore failed for %s: %s", match.name, exc)
             return

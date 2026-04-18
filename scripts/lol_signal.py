@@ -80,12 +80,13 @@ def reset_impact_model_for_test() -> None:
 # to the baseline model which we trust from months of live use. Only skip
 # if BOTH fail.
 
-def safe_predict_win_prob(*args, **kwargs) -> float:
-    """predict_win_prob with primary → v1-fallback semantics.
-    Raises only if BOTH models fail. Logs a warning on primary failure."""
+def _predict_once(game_minute: float, team_stats: dict, opponent_stats: dict,
+                   is_blue: bool = True, **kwargs) -> float:
+    """One predict_win_prob with primary → v1 fallback. No smoothing."""
     primary = _get_impact_model()
     try:
-        return primary.predict_win_prob(*args, **kwargs)
+        return primary.predict_win_prob(game_minute, team_stats, opponent_stats,
+                                         is_blue=is_blue, **kwargs)
     except Exception as exc:
         if not getattr(cfg, "MODEL_FALLBACK_TO_V1_ON_ERROR", True):
             raise
@@ -94,29 +95,68 @@ def safe_predict_win_prob(*args, **kwargs) -> float:
         fb = _get_fallback_v1_model()
         if fb is None or fb is primary:
             raise
-        # v1 ignores state_history/champs via is_v2=False, but we strip them
-        # defensively to avoid any arg-signature edge cases.
-        safe_kwargs = {k: v for k, v in kwargs.items()
-                       if k not in ("state_history", "current_ts", "team_champs", "opp_champs")}
-        return fb.predict_win_prob(*args, **safe_kwargs)
+        # v1 ignores state_history/champs/pin_totals via is_v2=False; strip
+        # defensively so signature drift can't surface.
+        safe_kw = {k: v for k, v in kwargs.items()
+                   if k not in ("state_history", "current_ts", "team_champs",
+                                "opp_champs", "pin_totals_from")}
+        return fb.predict_win_prob(game_minute, team_stats, opponent_stats,
+                                    is_blue=is_blue, **safe_kw)
 
 
-def safe_predict_impact_from_llf(*args, **kwargs) -> tuple[float, float, float]:
-    """predict_impact_from_llf with primary → v1-fallback semantics."""
-    primary = _get_impact_model()
-    try:
-        return primary.predict_impact_from_llf(*args, **kwargs)
-    except Exception as exc:
-        if not getattr(cfg, "MODEL_FALLBACK_TO_V1_ON_ERROR", True):
-            raise
-        log.warning("[SIGNAL] primary model predict_impact_from_llf failed: %s (%s) — trying v1 fallback",
-                    type(exc).__name__, exc)
-        fb = _get_fallback_v1_model()
-        if fb is None or fb is primary:
-            raise
-        safe_kwargs = {k: v for k, v in kwargs.items()
-                       if k not in ("state_history", "current_ts", "team_champs", "opp_champs")}
-        return fb.predict_impact_from_llf(*args, **safe_kwargs)
+def safe_predict_win_prob(game_minute: float, team_stats: dict, opponent_stats: dict,
+                           is_blue: bool = True, **kwargs) -> float:
+    """predict_win_prob with primary → v1-fallback + optional game_minute
+    smoothing across ±(MODEL_SMOOTH_WINDOW_SEC/2) averaged over
+    MODEL_SMOOTH_N_SAMPLES points. Smoothing flattens tree-split artifacts
+    in the game_minute feature so consecutive predictions at static state
+    drift smoothly instead of stepping. Controlled by a single config
+    knob; setting MODEL_SMOOTH_WINDOW_SEC=0 disables smoothing everywhere.
+    """
+    window_sec = float(getattr(cfg, "MODEL_SMOOTH_WINDOW_SEC", 0))
+    n_samples = int(getattr(cfg, "MODEL_SMOOTH_N_SAMPLES", 1))
+    if window_sec <= 0 or n_samples < 2:
+        return _predict_once(game_minute, team_stats, opponent_stats,
+                              is_blue=is_blue, **kwargs)
+    offsets_min = [((i / (n_samples - 1)) - 0.5) * (window_sec / 60.0)
+                   for i in range(n_samples)]
+    probs: list[float] = []
+    for off in offsets_min:
+        gm = max(0.0, game_minute + off)
+        try:
+            probs.append(_predict_once(gm, team_stats, opponent_stats,
+                                         is_blue=is_blue, **kwargs))
+        except Exception:
+            pass
+    if not probs:
+        # Re-raise via one more unsmoothed attempt so the caller sees the error
+        return _predict_once(game_minute, team_stats, opponent_stats,
+                              is_blue=is_blue, **kwargs)
+    return sum(probs) / len(probs)
+
+
+def safe_predict_impact_from_llf(
+    game_minute: float,
+    team_before: dict, team_after: dict,
+    opp_before: dict, opp_after: dict,
+    is_blue: bool = True,
+    **kwargs,
+) -> tuple[float, float, float]:
+    """predict_impact_from_llf decomposed into two smoothed safe_predict_win_prob
+    calls with pin_totals semantics preserved. Both p_before and p_after are
+    averaged across the same ±window of game_minute, so their delta is robust
+    to tree splits in the game_minute feature."""
+    p_before = safe_predict_win_prob(
+        game_minute, team_before, opp_before, is_blue=is_blue, **kwargs,
+    )
+    # Pin totals to BEFORE state so monotone diff features drive the sign.
+    blue_before = team_before if is_blue else opp_before
+    red_before = opp_before if is_blue else team_before
+    p_after = safe_predict_win_prob(
+        game_minute, team_after, opp_after, is_blue=is_blue,
+        pin_totals_from=(blue_before, red_before), **kwargs,
+    )
+    return p_after - p_before, p_before, p_after
 
 
 class EventType(str, Enum):
