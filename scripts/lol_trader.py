@@ -283,10 +283,19 @@ class LoLTrader:
         await self._discover_matches()
 
         if not self.matches:
-            log.warning("No matches with LLF found. Exiting.")
-            return
-
-        log.info("Found %d match(es) with LLF", len(self.matches))
+            # No live LoL matches right now — but we may still hold stuck
+            # positions (CTFs sitting on-chain awaiting resolution) AND new
+            # matches will appear as the day progresses. Stay alive: the
+            # _market_refresh_loop re-discovers every 30s and the _exit_loop
+            # keeps reporting on whatever positions exist.
+            log.warning(
+                "No live LoL matches with LLF — entering hold-only mode "
+                "(open positions: %d). Refresh loop will pick up new matches "
+                "as they go live.",
+                len(self.risk.open_positions),
+            )
+        else:
+            log.info("Found %d match(es) with LLF", len(self.matches))
 
         log.info("Discovering Polymarket markets...")
         await self._discover_markets()
