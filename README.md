@@ -96,7 +96,7 @@ Saved as JSON in `logs/trade_tapes/`. Each file contains the signal parameters, 
 
 ```
 # Runtime
-pip install httpx websockets python-dotenv aiohttp py-clob-client
+pip install httpx websockets python-dotenv aiohttp py-clob-client-v2
 
 # Training (optional)
 pip install lightgbm optuna scikit-learn pandas pyarrow joblib

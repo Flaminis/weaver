@@ -18,18 +18,19 @@ from polymarket.config import settings
 from polymarket.logger import get_logger
 
 try:
-    from py_clob_client.client import ClobClient
-    from py_clob_client.clob_types import (
+    from py_clob_client_v2.client import ClobClient
+    from py_clob_client_v2.clob_types import (
         ApiCreds,
         AssetType,
         BalanceAllowanceParams,
         MarketOrderArgs,
         OrderArgs,
+        OrderPayload,
         OrderType,
         PartialCreateOrderOptions,
         TradeParams,
     )
-    from py_clob_client.order_builder.constants import BUY, SELL
+    from py_clob_client_v2.order_builder.constants import BUY, SELL
     HAS_CLOB = True
 except ImportError:
     HAS_CLOB = False
@@ -49,7 +50,7 @@ class PolyClient:
 
     async def connect(self):
         if not HAS_CLOB:
-            log.warning("py-clob-client not installed — read-only mode (pip install py-clob-client requires Python >=3.9.10)")
+            log.warning("py-clob-client-v2 not installed — read-only mode (pip install py-clob-client-v2 requires Python >=3.9.10)")
             return
         if not self._cfg.private_key:
             log.warning("No POLY_PRIVATE_KEY — read-only mode")
@@ -74,7 +75,7 @@ class PolyClient:
             self._clob.set_api_creds(creds)
             log.info("Using explicit CLOB API creds (sig_type=%d)", sig_type)
         else:
-            self._clob.set_api_creds(self._clob.create_or_derive_api_creds())
+            self._clob.set_api_creds(self._clob.create_or_derive_api_key())
             log.info("Derived CLOB API creds on-chain (sig_type=%d)", sig_type)
         self._ready = True
 
@@ -268,7 +269,7 @@ class PolyClient:
 
     def cancel_order(self, order_id: str):
         try:
-            return self.clob.cancel(order_id)
+            return self.clob.cancel_order(OrderPayload(orderID=order_id))
         except Exception as e:
             log.warning("cancel_order(%s) failed: %s", order_id[:16] if order_id else "?", e)
             return None
@@ -282,7 +283,7 @@ class PolyClient:
 
     def get_open_orders(self):
         try:
-            return self.clob.get_orders()
+            return self.clob.get_open_orders()
         except Exception as e:
             log.warning("get_open_orders failed: %s", e)
             return []
